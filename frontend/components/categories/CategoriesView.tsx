@@ -124,11 +124,10 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
       {/* Categories Table */}
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[700px]">
+          <table className="w-full text-left text-xs min-w-[600px]">
           <thead className="bg-[#F8FAFC] text-zinc-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="px-5 py-3">{t('categories.nameEn')}</th>
-              <th className="px-4 py-3">{t('categories.nameKm')}</th>
+              <th className="px-5 py-3">{t('categories.title')}</th>
               <th className="px-4 py-3">{t('categories.description')}</th>
               <th className="px-4 py-3 text-right">{t('categories.agreedPurchasePrice')}</th>
               <th className="px-3 py-3 text-center">{t('categories.productCount')}</th>
@@ -138,13 +137,13 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-400">
+                <td colSpan={userRole === 'ADMIN' ? 5 : 4} className="p-8 text-center text-gray-400">
                   {t('common.loading')}
                 </td>
               </tr>
             ) : categoryList.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-400">
+                <td colSpan={userRole === 'ADMIN' ? 5 : 4} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
@@ -156,10 +155,9 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
                       <div className="p-1.5 rounded-lg bg-amber-400/10 dark:bg-amber-400/15 text-amber-600 dark:text-amber-400">
                         <Tags className="w-3.5 h-3.5" />
                       </div>
-                      <span>{c.name}</span>
+                      <span>{language === 'km' && c.nameKm ? c.nameKm : c.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-medium text-zinc-800 dark:text-zinc-200">{c.nameKm || '—'}</td>
                   <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.description || '—'}</td>
                   <td className="px-4 py-3 text-right font-bold text-slate-800">
                     {formatCurrency(c.agreedPurchasePrice || 0)}

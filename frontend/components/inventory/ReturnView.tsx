@@ -2,34 +2,50 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Undo2, CheckCircle2, ShieldAlert } from 'lucide-react'
+import { Undo2, CheckCircle2, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
+import { formatStockQuantity } from '@/lib/unit-labels'
+import { TransactionDetail } from '@/frontend/components/inventory/TransactionDetail'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function ReturnView() {
   const { t, language, formatDate } = useI18n()
   const { data: products } = useSWR('/api/products?limit=100', fetcher)
-  const { data: recentReturns, mutate: mutateRecent } = useSWR('/api/stock/return?limit=10', fetcher)
+  const [historyOffset, setHistoryOffset] = useState(0)
+  const [detailItem, setDetailItem] = useState<any>(null)
+  const { data: recentReturns, mutate: mutateRecent } = useSWR(`/api/stock/return?limit=10&offset=${historyOffset}`, fetcher)
 
   const [productId, setProductId] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
   const [quantity, setQuantity] = useState('6')
-  const [reason, setReason] = useState('unopenedGuestReturn')
-  const [notes, setNotes] = useState('')
+  const [reason, setReason] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const productList = products?.products || []
-
-  const reasonOptions = [
-    { value: 'unopenedGuestReturn', label: t('returnedItems.reasons.unopenedGuestReturn') },
-    { value: 'cancelledRoomOrder', label: t('returnedItems.reasons.cancelledRoomOrder') },
-    { value: 'overstockRoomReturn', label: t('returnedItems.reasons.overstockRoomReturn') },
-  ]
+  const activeProductId = productId || productList[0]?.id || ''
+  const selectedProduct = productList.find((p: any) => p.id === activeProductId)
+  const baseUnit = (selectedProduct?.unit || 'unit').split('/')[0].trim()
+  const altUnit = selectedProduct?.altUnit || ''
+  const conversionRate = Number(selectedProduct?.conversionRate) > 1 ? Number(selectedProduct.conversionRate) : 1
+  const hasConversion = Boolean(altUnit && conversionRate > 1)
+  const currentUnit = selectedUnit || baseUnit
+  const quantityInBase = Number(quantity || 0) * (hasConversion && currentUnit.toLowerCase() !== altUnit.toLowerCase() ? conversionRate : 1)
+  const unitText = (value: string) => {
+    const fallback: Record<string, string> = { can: 'កំប៉ុង', bottle: 'ដប', box: 'កេស', carton: 'កេស', piece: 'ដុំ', pack: 'កញ្ចប់', unit: 'មុខ' }
+    const key = value.replace(/^products\.units\./, '')
+    const translated = t(`products.units.${key}`)
+    return translated.startsWith('products.units.') ? (fallback[key] || key) : translated
+  }
+  const unitOptions = selectedProduct ? [
+    { value: baseUnit, label: unitText(baseUnit) },
+    ...(hasConversion ? [{ value: altUnit, label: `${unitText(altUnit)} (1 ${unitText(baseUnit)} = ${conversionRate} ${unitText(altUnit)})` }] : []),
+  ] : []
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,10 +58,10 @@ export function ReturnView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productId: productId || productList[0]?.id,
+          productId: activeProductId,
           quantity: Number(quantity),
-          reason: t(`returnedItems.reasons.${reason}`),
-          notes,
+          unit: currentUnit,
+          reason,
         }),
       })
 
@@ -53,7 +69,8 @@ export function ReturnView() {
       if (!res.ok) throw new Error(json.error || 'Failed to process return')
 
       setSuccessMsg(true)
-      setNotes('')
+      setReason('')
+      setHistoryOffset(0)
       mutateRecent()
       setTimeout(() => setSuccessMsg(false), 4000)
     } catch (err: any) {
@@ -65,7 +82,7 @@ export function ReturnView() {
 
   const productOptions = productList.map((p: any) => ({
     value: p.id,
-    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} (${p.sku})`,
+    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name}`,
   }))
 
   return (
@@ -102,7 +119,7 @@ export function ReturnView() {
               required
               options={productOptions}
               value={productId || productList[0]?.id || ''}
-              onChange={(e) => setProductId(e.target.value)}
+              onChange={(e) => { setProductId(e.target.value); const p = productList.find((item: any) => item.id === e.target.value); setSelectedUnit((p?.unit || 'unit').split('/')[0].trim()) }}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -115,19 +132,21 @@ export function ReturnView() {
                 onChange={(e) => setQuantity(e.target.value)}
               />
               <Select
-                label={t('returnedItems.reason')}
-                options={reasonOptions}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                label={t('stockIn.unitSelection')}
+                options={unitOptions}
+                value={currentUnit}
+                onChange={(e) => setSelectedUnit(e.target.value)}
               />
             </div>
-
-            <Input
-              label={t('common.notes')}
-              placeholder="Verification notes / កំណត់ចំណាំត្រួតពិនិត្យ"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+            {hasConversion && currentUnit.toLowerCase() === altUnit.toLowerCase() && (
+              <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                {quantity} {unitText(altUnit)} = {quantityInBase} {unitText(baseUnit)}
+              </p>
+            )}
+            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 font-khmer">
+              {t('products.description')}<span className="text-rose-500 ml-0.5">*</span>
+              <textarea required rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30" />
+            </label>
 
             <Button type="submit" variant="primary" isLoading={isLoading} className="w-full">
               <Undo2 className="w-4 h-4" />
@@ -141,23 +160,28 @@ export function ReturnView() {
           <h2 className="text-sm font-bold text-gray-900 mb-3">{t('dashboard.recentTransactions')}</h2>
           <div className="flex-1 overflow-y-auto space-y-2">
             {(recentReturns || []).map((item: any) => (
-              <div key={item.id} className="p-3 bg-gray-50 rounded-lg text-xs space-y-1">
+              <button type="button" onClick={() => setDetailItem(item)} key={item.id} className="w-full text-left p-3 bg-gray-50 hover:bg-emerald-50 rounded-lg text-xs space-y-1 border border-transparent hover:border-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                 <div className="flex justify-between font-semibold text-gray-800">
-                  <span className="truncate pr-2">{item.productName}</span>
-                  <span className="text-emerald-600 font-bold">+{item.quantity}</span>
+                  <span className="truncate pr-2">{language === 'km' && item.productNameKm ? item.productNameKm : item.productName}</span>
+                  <span className="text-emerald-600 font-bold">+{formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>
                 </div>
                 <div className="flex justify-between text-gray-500 text-[10px]">
                   <span>{item.reason}</span>
                   <span>{formatDate(item.createdAt)}</span>
                 </div>
-              </div>
+              </button>
             ))}
             {(!recentReturns || recentReturns.length === 0) && (
               <p className="text-xs text-gray-400 text-center py-6">{t('common.noRecords')}</p>
             )}
           </div>
+          <div className="flex justify-between pt-3 mt-3 border-t border-zinc-100">
+            <Button type="button" variant="outline" size="sm" disabled={historyOffset === 0} onClick={() => setHistoryOffset(Math.max(0, historyOffset - 10))}><ChevronLeft className="w-4 h-4" />{t('common.previous')}</Button>
+            <Button type="button" variant="outline" size="sm" disabled={!recentReturns || recentReturns.length < 10} onClick={() => setHistoryOffset(historyOffset + 10)}>{t('common.next')}<ChevronRight className="w-4 h-4" /></Button>
+          </div>
         </div>
       </div>
+      <TransactionDetail item={detailItem} onClose={() => setDetailItem(null)} language={language} t={t} formatDate={formatDate} />
     </div>
   )
 }

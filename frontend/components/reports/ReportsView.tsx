@@ -6,6 +6,7 @@ import { Download, FileSpreadsheet, Filter } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
+import { formatStockQuantity } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -46,6 +47,25 @@ export function ReportsView() {
 
   const items = Array.isArray(data) ? data : []
   const columns = items.length > 0 ? Object.keys(items[0]) : []
+  const renderValue = (column: string, value: unknown, row: any) => {
+    const raw = String(value ?? '—')
+    if (reportType === 'stock' && ['physicalStock', 'reservedStock', 'availableStock'].includes(column)) {
+      return formatStockQuantity(Number(value) || 0, row.unit, row.altUnit, row.conversionRate, (key) => t(key))
+    }
+    if (column === 'unit' || column === 'purchaseUnit') {
+      const translated = t(`products.units.${raw}`)
+      return translated.startsWith('products.units.') ? raw : translated
+    }
+    if (column === 'status') {
+      const statusKey: Record<string, string> = { 'In Stock': 'products.inStock', 'Low Stock': 'products.lowStock', 'Out of Stock': 'products.outOfStock' }
+      return statusKey[raw] ? t(statusKey[raw]) : raw
+    }
+    return raw
+  }
+  const renderColumn = (column: string) => {
+    const translated = t(`reports.columns.${column}`)
+    return translated.startsWith('reports.columns.') ? column.replace(/([A-Z])/g, ' $1') : translated
+  }
 
   return (
     <div className="space-y-6">
@@ -113,7 +133,7 @@ export function ReportsView() {
               <tr>
                 {columns.map((col) => (
                   <th key={col} className="px-4 py-3 capitalize whitespace-nowrap">
-                    {col.replace(/([A-Z])/g, ' $1')}
+                    {renderColumn(col)}
                   </th>
                 ))}
               </tr>
@@ -136,7 +156,7 @@ export function ReportsView() {
                   <tr key={idx} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
                     {columns.map((col) => (
                       <td key={col} className="px-4 py-3 text-gray-800 whitespace-nowrap">
-                        {String(row[col] ?? '—')}
+                        {renderValue(col, row[col], row)}
                       </td>
                     ))}
                   </tr>

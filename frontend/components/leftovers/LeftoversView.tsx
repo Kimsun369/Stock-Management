@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import { Plus, Search, Clock, Printer, CheckCircle, XCircle } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
+import { formatUnitLabel } from '@/lib/unit-labels'
 import { CustomerRecordWithItems } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Select } from '@/frontend/components/ui/Select'
@@ -295,7 +296,7 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
                     <p className="font-semibold text-gray-900 text-xs">{it.productName}</p>
                     <p className="text-[10px] text-gray-500 mt-0.5">
                       {t('customerLeftovers.originalQty')}: {it.originalQuantity} | {t('customerLeftovers.remainingQty')}:{' '}
-                      <b>{it.remainingQuantity} {it.unit}</b>
+                      <b>{it.remainingQuantity} {formatUnitLabel(it.unit, t)}</b>
                     </p>
                   </div>
                   <div className="w-28">

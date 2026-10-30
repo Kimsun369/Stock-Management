@@ -11,8 +11,9 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const productId = searchParams.get('productId') || undefined
     const limit = Number(searchParams.get('limit')) || 50
+    const offset = Math.max(0, Number(searchParams.get('offset')) || 0)
 
-    const list = await getStockLedger({ productId, type: 'STOCK_OUT', limit })
+    const list = await getStockLedger({ productId, type: 'STOCK_OUT', limit, offset })
     return NextResponse.json(list)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })

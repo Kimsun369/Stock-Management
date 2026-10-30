@@ -1,5 +1,6 @@
 import { getAllRows, appendRow, updateRowById, appendAuditLog, SHEETS } from '@/backend/sheets'
 import { StockTransaction, Product, TransactionType } from '@/backend/types'
+import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 
 export async function getStockLedger(filters?: {
   productId?: string
@@ -7,14 +8,17 @@ export async function getStockLedger(filters?: {
   startDate?: string
   endDate?: string
   limit?: number
+  offset?: number
 }): Promise<StockTransaction[]> {
-  const [txRows, productRows, userRows] = await Promise.all([
+  const [txRows, productRows, userRows, categoryRows] = await Promise.all([
     getAllRows(SHEETS.StockTransactions),
     getAllRows(SHEETS.Products),
     getAllRows(SHEETS.Users),
+    getAllRows(SHEETS.Categories),
   ])
 
-  const productMap = new Map(productRows.map((p) => [p.id, p]))
+  const categoryMap = new Map(categoryRows.map((c) => [c.id, `${c.name || ''} ${c.nameKm || ''}`]))
+  const productMap = new Map(productRows.map((p) => [p.id, normalizeUnitPair(p, categoryMap.get(p.categoryId) || '')]))
   const userMap = new Map(userRows.map((u) => [u.id, u.name]))
 
   let transactions: StockTransaction[] = txRows.map((row) => {
@@ -24,6 +28,8 @@ export async function getStockLedger(filters?: {
       productId: row.productId,
       type: row.type as TransactionType,
       quantity: Number(row.quantity) || 0,
+      enteredQuantity: row.enteredQuantity ? Number(row.enteredQuantity) : undefined,
+      enteredUnit: row.enteredUnit || undefined,
       previousBalance: Number(row.previousBalance) || 0,
       resultingBalance: Number(row.resultingBalance) || 0,
       unitCost: Number(row.unitCost) || 0,
@@ -34,6 +40,10 @@ export async function getStockLedger(filters?: {
       recordedByUserId: row.recordedByUserId || '',
       createdAt: row.createdAt || '',
       productName: product ? product.name : 'Unknown Product',
+      productNameKm: product?.nameKm || '',
+      productMainUnit: product?.unit || '',
+      productMinorUnit: product?.altUnit || '',
+      productConversionRate: Number(product?.conversionRate) || 1,
       recordedByName: userMap.get(row.recordedByUserId) || 'Staff',
     }
   })
@@ -58,7 +68,8 @@ export async function getStockLedger(filters?: {
   transactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   if (filters?.limit && filters.limit > 0) {
-    return transactions.slice(0, filters.limit)
+    const offset = Math.max(0, filters.offset || 0)
+    return transactions.slice(offset, offset + filters.limit)
   }
 
   return transactions
@@ -72,6 +83,7 @@ export async function recordStockIn(params: {
   unitCost?: number
   currency?: string
   invoiceNumber?: string
+  description?: string
   notes?: string
   userId: string
   userName: string
@@ -86,27 +98,31 @@ export async function recordStockIn(params: {
     throw new Error('PRODUCT_NOT_FOUND')
   }
 
-  // Base unit & alternative packaging unit conversion
-  const rawBase = productRow.unit || 'can'
+  const categoryRows = await getAllRows(SHEETS.Categories)
+  const category = categoryRows.find((c) => c.id === productRow.categoryId)
+  const units = normalizeUnitPair(productRow, `${category?.name || ''} ${category?.nameKm || ''}`)
+  const configuredCost = configuredPurchaseCost(productRow, units)
+  // Inventory is stored as a count of the configured minor unit.
+  const rawBase = units.unit || 'unit'
   const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
-  const defaultAlt = baseUnit === 'bottle' ? 'carton' : 'box'
-  const altUnit = productRow.altUnit || defaultAlt
-  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 24
+  const altUnit = units.altUnit || ''
+  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
 
   let baseQuantity = params.quantity
   let unitDetail = `${params.quantity} ${baseUnit}`
 
-  if (params.unit && altUnit && params.unit.toLowerCase() === altUnit.toLowerCase() && conversionRate > 1) {
+  if (altUnit && conversionRate > 1 && (!params.unit || params.unit.toLowerCase() === baseUnit.toLowerCase())) {
     baseQuantity = params.quantity * conversionRate
-    unitDetail = `${params.quantity} ${altUnit} (${params.quantity} × ${conversionRate} = ${baseQuantity} ${baseUnit})`
   }
+  unitDetail = `${params.quantity} ${params.unit || baseUnit}`
 
   const currentPhysical = Number(productRow.physicalStock) || 0
   const reserved = Number(productRow.reservedStock) || 0
   const newPhysical = currentPhysical + baseQuantity
 
   // Important pricing rule: Staff cannot edit purchase price! Use existing configured price.
-  const unitCost = Number(productRow.purchaseCost) || 0
+  const purchasePackageCost = configuredCost
+  const unitCost = altUnit && conversionRate > 1 ? purchasePackageCost / conversionRate : purchasePackageCost
   const currency = params.currency || 'USD'
   const now = new Date().toISOString()
   const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
@@ -117,7 +133,7 @@ export async function recordStockIn(params: {
   })
 
   // 2. Append StockTransaction ledger entry
-  const noteContent = [params.notes, unitDetail].filter(Boolean).join(' | ')
+  const noteContent = params.description || params.notes || ''
   await appendRow(SHEETS.StockTransactions, [
     txId,
     productRow.id,
@@ -132,6 +148,8 @@ export async function recordStockIn(params: {
     noteContent,
     params.userId,
     now,
+    String(params.quantity),
+    params.unit || baseUnit,
   ])
 
   // 3. Append PurchaseRecord for spending calculations
@@ -170,11 +188,10 @@ export async function recordStockIn(params: {
     nameKm: productRow.nameKm || '',
     categoryId: productRow.categoryId,
     brand: productRow.brand || '',
-    unit: productRow.unit || 'can',
-    altUnit: productRow.altUnit || '',
+    unit: units.unit || 'can',
+    altUnit: units.altUnit || '',
     conversionRate: Number(productRow.conversionRate) || 1,
-    purchaseCost: unitCost,
-    sellingPrice: Number(productRow.sellingPrice) || 0,
+    purchaseCost: purchasePackageCost,
     physicalStock: newPhysical,
     reservedStock: reserved,
     minStock: Number(productRow.minStock) || 5,
@@ -196,7 +213,7 @@ export async function recordStockIn(params: {
     unitCost,
     currency,
     reference: params.invoiceNumber || '',
-    reason: 'Stock In / Venue Delivery',
+    reason: params.description || params.notes || 'Stock In / Venue Delivery',
     notes: noteContent,
     recordedByUserId: params.userId,
     createdAt: now,
@@ -225,20 +242,23 @@ export async function recordStockOut(params: {
     throw new Error('PRODUCT_NOT_FOUND')
   }
 
-  // Base unit & alternative packaging unit conversion
-  const rawBase = productRow.unit || 'can'
+  const categoryRows = await getAllRows(SHEETS.Categories)
+  const category = categoryRows.find((c) => c.id === productRow.categoryId)
+  const units = normalizeUnitPair(productRow, `${category?.name || ''} ${category?.nameKm || ''}`)
+  const configuredCost = configuredPurchaseCost(productRow, units)
+  // Inventory is stored as a count of the configured minor unit.
+  const rawBase = units.unit || 'unit'
   const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
-  const defaultAlt = baseUnit === 'bottle' ? 'carton' : 'box'
-  const altUnit = productRow.altUnit || defaultAlt
-  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 24
+  const altUnit = units.altUnit || ''
+  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
 
   let baseQuantity = params.quantity
   let unitDetail = `${params.quantity} ${baseUnit}`
 
-  if (params.unit && altUnit && params.unit.toLowerCase() === altUnit.toLowerCase() && conversionRate > 1) {
+  if (altUnit && conversionRate > 1 && (!params.unit || params.unit.toLowerCase() === baseUnit.toLowerCase())) {
     baseQuantity = params.quantity * conversionRate
-    unitDetail = `${params.quantity} ${altUnit} (${params.quantity} × ${conversionRate} = ${baseQuantity} ${baseUnit})`
   }
+  unitDetail = `${params.quantity} ${params.unit || baseUnit}`
 
   const currentPhysical = Number(productRow.physicalStock) || 0
   const reserved = Number(productRow.reservedStock) || 0
@@ -259,7 +279,7 @@ export async function recordStockOut(params: {
   })
 
   // 2. Append StockTransaction ledger entry
-  const noteContent = [params.notes, unitDetail].filter(Boolean).join(' | ')
+  const noteContent = params.notes || ''
   await appendRow(SHEETS.StockTransactions, [
     txId,
     productRow.id,
@@ -267,13 +287,15 @@ export async function recordStockOut(params: {
     String(baseQuantity),
     String(currentPhysical),
     String(newPhysical),
-    productRow.purchaseCost || '0',
+    String(configuredCost / (altUnit && conversionRate > 1 ? conversionRate : 1)),
     'USD',
     params.reference || '',
     params.reason,
     noteContent,
     params.userId,
     now,
+    String(params.quantity),
+    params.unit || baseUnit,
   ])
 
   // 3. Append AuditLog
@@ -293,11 +315,10 @@ export async function recordStockOut(params: {
     nameKm: productRow.nameKm || '',
     categoryId: productRow.categoryId,
     brand: productRow.brand || '',
-    unit: productRow.unit || 'can',
-    altUnit: productRow.altUnit || '',
+    unit: units.unit || 'can',
+    altUnit: units.altUnit || '',
     conversionRate: Number(productRow.conversionRate) || 1,
-    purchaseCost: Number(productRow.purchaseCost) || 0,
-    sellingPrice: Number(productRow.sellingPrice) || 0,
+    purchaseCost: configuredCost,
     physicalStock: newPhysical,
     reservedStock: reserved,
     minStock: Number(productRow.minStock) || 5,
@@ -316,7 +337,7 @@ export async function recordStockOut(params: {
     quantity: baseQuantity,
     previousBalance: currentPhysical,
     resultingBalance: newPhysical,
-    unitCost: Number(productRow.purchaseCost) || 0,
+    unitCost: configuredCost / (altUnit && conversionRate > 1 ? conversionRate : 1),
     currency: 'USD',
     reference: params.reference || '',
     reason: params.reason,
@@ -331,6 +352,7 @@ export async function recordStockOut(params: {
 export async function recordReturn(params: {
   productId: string
   quantity: number
+  unit?: string
   reason: string
   notes?: string
   userId: string
@@ -346,9 +368,18 @@ export async function recordReturn(params: {
     throw new Error('PRODUCT_NOT_FOUND')
   }
 
+  const categoryRows = await getAllRows(SHEETS.Categories)
+  const category = categoryRows.find((c) => c.id === productRow.categoryId)
+  const units = normalizeUnitPair(productRow, `${category?.name || ''} ${category?.nameKm || ''}`)
+  const configuredCost = configuredPurchaseCost(productRow, units)
+  const rawBase = units.unit || 'unit'
+  const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
+  const altUnit = units.altUnit || ''
+  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
+  const quantity = altUnit && conversionRate > 1 && (!params.unit || params.unit.toLowerCase() === baseUnit.toLowerCase()) ? params.quantity * conversionRate : params.quantity
   const currentPhysical = Number(productRow.physicalStock) || 0
   const reserved = Number(productRow.reservedStock) || 0
-  const newPhysical = currentPhysical + params.quantity
+  const newPhysical = currentPhysical + quantity
   const now = new Date().toISOString()
   const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
 
@@ -362,16 +393,18 @@ export async function recordReturn(params: {
     txId,
     productRow.id,
     'RETURN',
-    String(params.quantity),
+    String(quantity),
     String(currentPhysical),
     String(newPhysical),
-    productRow.purchaseCost || '0',
+    String(configuredCost / (altUnit && conversionRate > 1 ? conversionRate : 1)),
     'USD',
     'RETURN-ROOM',
     params.reason,
     params.notes || '',
     params.userId,
     now,
+    String(params.quantity),
+    params.unit || baseUnit,
   ])
 
   // 3. Append AuditLog
@@ -381,7 +414,7 @@ export async function recordReturn(params: {
     action: 'RETURN',
     entityType: 'Product',
     entityId: productRow.id,
-    details: `Returned ${params.quantity} ${productRow.unit} of ${productRow.name} to available inventory (${params.reason})`,
+    details: `Returned ${quantity} ${baseUnit} of ${productRow.name} to available inventory (${params.reason})`,
   })
 
   const updatedProduct: Product = {
@@ -391,9 +424,8 @@ export async function recordReturn(params: {
     nameKm: productRow.nameKm || '',
     categoryId: productRow.categoryId,
     brand: productRow.brand || '',
-    unit: productRow.unit || 'units',
-    purchaseCost: Number(productRow.purchaseCost) || 0,
-    sellingPrice: Number(productRow.sellingPrice) || 0,
+    unit: units.unit || 'units',
+    purchaseCost: configuredCost,
     physicalStock: newPhysical,
     reservedStock: reserved,
     minStock: Number(productRow.minStock) || 5,
@@ -409,10 +441,10 @@ export async function recordReturn(params: {
     id: txId,
     productId: productRow.id,
     type: 'RETURN',
-    quantity: params.quantity,
+    quantity,
     previousBalance: currentPhysical,
     resultingBalance: newPhysical,
-    unitCost: Number(productRow.purchaseCost) || 0,
+    unitCost: configuredCost / (altUnit && conversionRate > 1 ? conversionRate : 1),
     currency: 'USD',
     reference: 'RETURN-ROOM',
     reason: params.reason,

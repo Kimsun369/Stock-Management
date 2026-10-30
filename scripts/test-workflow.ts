@@ -1,8 +1,9 @@
 import { initializeSheets, getAllRows, SHEETS } from '../backend/sheets'
 import { createCategory, updateCategory, getCategories } from '../backend/services/categories.service'
 import { createProduct, getProducts, getProductById } from '../backend/services/products.service'
-import { recordStockIn, recordStockOut } from '../backend/services/inventory.service'
+import { recordStockIn, recordStockOut, recordReturn } from '../backend/services/inventory.service'
 import { registerCustomerLeftover, recordCustomerCollection } from '../backend/services/leftovers.service'
+import { requestAdjustment, reviewAdjustment } from '../backend/services/adjustments.service'
 import { getDashboardMetrics } from '../backend/services/dashboard.service'
 import assert from 'assert'
 
@@ -45,21 +46,19 @@ async function run() {
   assert.strictEqual(updatedCat.agreedPurchasePrice, 0.70, 'Agreed purchase price should update to 0.70')
   console.log(`✔ Admin updated category agreed purchase price to: $${updatedCat.agreedPurchasePrice}\n`)
 
-  // 3. Create a product with Main unit: Can, Alt unit: Box, Conversion: 1 Box = 24 Cans
-  console.log('Step 3: Creating product with Can & Box units (1 Box = 24 Cans)...')
-  const testSku = `BEER-BOX-${Date.now()}`
+  // 3. Create a product with beer units with 1 កេស = 24 កំប៉ុង
+  console.log('Step 3: Creating beer product with configured កំប៉ុង / កេស units...')
   const product = await createProduct(
     {
-      sku: testSku,
+      sku: '',
       name: 'Cambodia Beer Can 330ml',
       nameKm: 'ស្រាបៀរកម្ពុជា កំប៉ុង',
       categoryId: cat.id,
       brand: 'Cambodia',
       unit: 'can',
-      altUnit: 'box',
+      altUnit: 'កេស',
       conversionRate: 24,
       purchaseCost: 0.70, // Agreed price from category
-      sellingPrice: 1.50,
       minStock: 24,
     },
     adminId,
@@ -67,26 +66,26 @@ async function run() {
   )
 
   assert.strictEqual(product.unit, 'can')
-  assert.strictEqual(product.altUnit, 'box')
+  assert.strictEqual(product.altUnit, 'កេស')
   assert.strictEqual(product.conversionRate, 24)
   assert.strictEqual(product.physicalStock, 0)
   assert.strictEqual(product.purchaseCost, 0.70)
-  console.log(`✔ Product created: ${product.name} (${product.sku})`)
+  console.log(`✔ Product created: ${product.name}`)
   console.log(`  - Main Unit: ${product.unit}`)
   console.log(`  - Packaging Unit: ${product.altUnit}`)
   console.log(`  - Conversion Rate: 1 ${product.altUnit} = ${product.conversionRate} ${product.unit}s`)
   console.log(`  - Initial Physical Stock: ${product.physicalStock} ${product.unit}s\n`)
 
-  // 4. Add 2 Boxes and verify stock increases by 48 Cans
-  console.log('Step 4: Recording Stock In (Add Stock) of 2 Boxes...')
-  // Staff attempts to record 2 Boxes and pass unitCost=999 (tampering test)
+  // 4. Add 2 កេស and verify stock increases by 48 កំប៉ុង
+  console.log('Step 4: Recording Stock In (Add Stock) of 2 កេស...')
+  // Staff attempts to record 2 កេស and pass unitCost=999 (tampering test)
   const stockInResult = await recordStockIn({
     productId: product.id,
     quantity: 2,
-    unit: 'box',
+    unit: 'កេស',
     unitCost: 999, // Should be IGNORED! Staff cannot change configured price!
     invoiceNumber: 'INV-TEST-001',
-    notes: 'Received 2 boxes from distributor',
+    notes: 'Received 2 កេស from distributor',
     userId: staffId,
     userName: staffName,
   })
@@ -95,25 +94,25 @@ async function run() {
   assert(prodAfterIn, 'Product must exist')
 
   console.log(`✔ Stock In recorded:`)
-  console.log(`  - Quantity Added: 2 Boxes × 24 Cans = ${stockInResult.transaction.quantity} Cans`)
-  console.log(`  - Physical Stock updated: 0 -> ${prodAfterIn.physicalStock} Cans`)
-  console.log(`  - Available Stock: ${prodAfterIn.availableStock} Cans`)
-  assert.strictEqual(prodAfterIn.physicalStock, 48, 'Stock must increase by exactly 48 Cans (2 Boxes × 24)')
-  assert.strictEqual(prodAfterIn.availableStock, 48, 'Available stock must increase by exactly 48 Cans')
+  console.log(`  - Quantity Added: 2 កេស × 24 កំប៉ុង = ${stockInResult.transaction.quantity} cans`)
+  console.log(`  - Physical Stock updated: 0 -> ${prodAfterIn.physicalStock} cans`)
+  console.log(`  - Available Stock: ${prodAfterIn.availableStock} cans`)
+  assert.strictEqual(prodAfterIn.physicalStock, 48, 'Stock must increase by exactly 48 កំប៉ុង (2 កេស × 24)')
+  assert.strictEqual(prodAfterIn.availableStock, 48, 'Available stock must increase by exactly 48 កំប៉ុង')
 
   // Verify staff CANNOT change purchase price
   assert.strictEqual(prodAfterIn.purchaseCost, 0.70, 'Purchase price must remain $0.70 (tampered unitCost ignored)')
   console.log(`✔ Staff cannot change purchase price verified: price remains configured $${prodAfterIn.purchaseCost}\n`)
 
-  // 5. Remove 1 Box and verify stock decreases by 24 Cans
-  console.log('Step 5: Recording Stock Out (Remove Stock) of 1 Box...')
+  // 5. Remove 1 កេស and verify stock decreases by 24 កំប៉ុង
+  console.log('Step 5: Recording Stock Out (Remove Stock) of 1 កេស...')
   const stockOutResult = await recordStockOut({
     productId: product.id,
     quantity: 1,
-    unit: 'box',
+    unit: 'កេស',
     reason: 'Room Service Room 202',
     reference: 'Room 202',
-    notes: 'Dispensed 1 box to room',
+    notes: 'Dispensed 1 កេស to room',
     userId: staffId,
     userName: staffName,
   })
@@ -122,17 +121,55 @@ async function run() {
   assert(prodAfterOut, 'Product must exist')
 
   console.log(`✔ Stock Out recorded:`)
-  console.log(`  - Quantity Deducted: 1 Box × 24 Cans = ${stockOutResult.transaction.quantity} Cans`)
-  console.log(`  - Physical Stock updated: 48 -> ${prodAfterOut.physicalStock} Cans`)
-  console.log(`  - Available Stock: ${prodAfterOut.availableStock} Cans`)
-  assert.strictEqual(prodAfterOut.physicalStock, 24, 'Stock must decrease by exactly 24 Cans (48 - 24 = 24)')
-  assert.strictEqual(prodAfterOut.availableStock, 24, 'Available stock must be 24 Cans')
+  console.log(`  - Quantity Deducted: 1 កេស × 24 កំប៉ុង = ${stockOutResult.transaction.quantity} cans`)
+  console.log(`  - Physical Stock updated: 48 -> ${prodAfterOut.physicalStock} cans`)
+  console.log(`  - Available Stock: ${prodAfterOut.availableStock} cans`)
+  assert.strictEqual(prodAfterOut.physicalStock, 24, 'Stock must decrease by exactly 24 កំប៉ុង (48 - 24 = 24)')
+  assert.strictEqual(prodAfterOut.availableStock, 24, 'Available stock must be 24 កំប៉ុង')
   assert.strictEqual(prodAfterOut.purchaseCost, 0.70, 'Stock Out must NOT change purchase price')
   console.log(`✔ Purchase price unchanged after Stock Out: $${prodAfterOut.purchaseCost}\n`)
 
+  const returnResult = await recordReturn({
+    productId: product.id,
+    quantity: 1,
+    unit: 'កេស',
+    reason: 'Package returned',
+    userId: staffId,
+    userName: staffName,
+  })
+  const productAfterReturn = await getProductById(product.id)
+  assert(productAfterReturn, 'Product must exist after return')
+  assert.strictEqual(returnResult.transaction.quantity, 24, 'Returning one beer case must restore 24 កំប៉ុង')
+  assert.strictEqual(productAfterReturn.physicalStock, 48, 'Return must add 24 base units to stock')
+  console.log('✔ Returning one កេស restores exactly 24 កំប៉ុង')
+
+  const tissue = await createProduct({
+    sku: `TEST-TISSUE-${Date.now()}`,
+    name: 'Tissue test',
+    nameKm: 'ក្រដាសជូតមាត់សាកល្បង',
+    categoryId: cat.id,
+    unit: 'sheet',
+    altUnit: 'កញ្ចប់',
+    conversionRate: 60,
+    purchaseCost: 42,
+    minStock: 5,
+  }, adminId, adminName)
+  const tissueIn = await recordStockIn({
+    productId: tissue.id, quantity: 1, unit: 'កញ្ចប់', userId: staffId, userName: staffName,
+  })
+  const tissueReturn = await recordReturn({
+    productId: tissue.id, quantity: 1, unit: 'កញ្ចប់', reason: 'Package return', userId: staffId, userName: staffName,
+  })
+  const tissueAfter = await getProductById(tissue.id)
+  assert.strictEqual(tissueIn.transaction.quantity, 60, 'Tissue package must convert to 60 sheets')
+  assert.strictEqual(tissueReturn.transaction.quantity, 60, 'Tissue return must convert to 60 sheets')
+  assert.strictEqual(tissueAfter?.physicalStock, 120, 'Tissue stock in and return must add 120 sheets')
+  assert.strictEqual(tissueAfter?.purchaseCost, 42, 'Tissue package price must remain $42')
+  console.log('✔ Special package conversion tested: 1 កញ្ចប់ = 60 សន្លឹក; purchase price remains $42')
+
   // 6. Test Customer-held units and Leftovers reservation
   console.log('Step 6: Testing Customer Leftovers & Reserved Units...')
-  const initialAvailable = prodAfterOut.availableStock
+  const initialAvailable = productAfterReturn.availableStock
   const leftover = await registerCustomerLeftover({
     customerName: 'Dara Chan',
     customerPhone: '098 765 432',
@@ -152,6 +189,20 @@ async function run() {
   assert.strictEqual(prodAfterLeftover.reservedStock, 6, 'Reserved stock must be 6 cans')
   assert.strictEqual(prodAfterLeftover.availableStock, initialAvailable - 6, 'Available stock must be reduced by 6 cans')
 
+  const approvalRequest = await requestAdjustment({
+    productId: product.id, requestedChange: 3, reason: 'Physical count found three extra cans', userId: staffId, userName: staffName,
+  })
+  const approved = await reviewAdjustment({ id: approvalRequest.id, action: 'approve', userId: adminId, userName: adminName })
+  assert.strictEqual(approved.status, 'APPROVED', 'Admin approval must mark the request approved')
+  assert.strictEqual((await getProductById(product.id))?.physicalStock, 51, 'Approval must add the requested three cans')
+  const rejectionRequest = await requestAdjustment({
+    productId: product.id, requestedChange: -2, reason: 'Count did not match after checking again', userId: staffId, userName: staffName,
+  })
+  const rejected = await reviewAdjustment({ id: rejectionRequest.id, action: 'reject', userId: adminId, userName: adminName, reviewNotes: 'Rejected after recount' })
+  assert.strictEqual(rejected.status, 'REJECTED', 'Admin rejection must mark the request rejected')
+  assert.strictEqual((await getProductById(product.id))?.physicalStock, 51, 'Rejection must leave stock unchanged')
+  console.log('✔ Adjustment approval changes stock; rejection leaves stock unchanged')
+
   // 7. Test Dashboard Metrics with Date Filters (today, thisWeek, thisMonth)
   console.log('\nStep 7: Testing Dashboard with Date Filters...')
   for (const filter of ['today', 'thisWeek', 'thisMonth'] as const) {
@@ -170,7 +221,7 @@ async function run() {
     assert(metrics.totalAvailableStock >= 0, 'Available stock should be non-negative')
     assert(metrics.totalReservedStock >= 6, 'Reserved stock should include the 6 customer held cans')
     assert((metrics.periodStockIn ?? 0) >= 48, 'Stock In should include the 48 cans added')
-    assert((metrics.periodStockOut ?? 0) >= 24, 'Stock Out should include the 24 cans removed')
+    assert((metrics.periodStockOut ?? 0) >= 24, 'Stock Out should include the 24 កំប៉ុង removed')
     assert((metrics.periodPurchases ?? 0) > 0, 'Spend should be calculated from actual stock-in purchases')
   }
 

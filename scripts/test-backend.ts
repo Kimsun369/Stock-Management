@@ -46,14 +46,13 @@ async function run() {
     await appendRow(SHEETS.Categories, ['cat_beer', 'Beer & Cider', 'ស្រាបៀរ និងស៊ីដឺ', 'Cold beers', 'true', now, now])
     await appendRow(SHEETS.Products, [
       'prod_angkor',
-      'BEER-ANG-CAN',
+      '',
       'Angkor Beer Can 330ml',
       'ស្រាបៀរអង្គរ កំប៉ុង ៣៣០មល',
       'cat_beer',
       'Angkor',
       'can',
-      '0.65',
-      '1.50',
+      '0',
       '100', // physicalStock
       '0',   // reservedStock
       '20',  // minStock
@@ -63,14 +62,16 @@ async function run() {
       'true',
       now,
       now,
+      'កេស',
+      '24',
     ])
-    console.log('✔ Initial products seeded')
+    console.log('✔ Initial test product seeded with a configured beer package')
   }
 
   // 4. Test Products Query
   const { products } = await getProducts()
   assert(products.length > 0, 'Should have at least 1 product')
-  const angkor = products.find((p) => p.sku === 'BEER-ANG-CAN')!
+  const angkor = products[0]
   console.log(`✔ Found product: ${angkor.name} | Available: ${angkor.availableStock}`)
 
   // 5. Test Customer Leftovers Registration & Reservation

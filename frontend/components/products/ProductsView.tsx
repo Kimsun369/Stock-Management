@@ -10,6 +10,7 @@ import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
 import { Badge } from '@/frontend/components/ui/Badge'
 import { Modal } from '@/frontend/components/ui/Modal'
+import { formatStockQuantity } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -45,12 +46,11 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
     nameKm: '',
     categoryId: '',
     brand: '',
-    unit: 'can',
-    altUnit: 'box',
-    conversionRate: '24',
-    purchaseCost: '0.65',
-    sellingPrice: '1.50',
-    minStock: '24',
+    unit: 'unit',
+    altUnit: '',
+    conversionRate: '1',
+    purchaseCost: '',
+    minStock: '5',
     description: '',
   })
   const [isSaving, setIsSaving] = useState(false)
@@ -66,19 +66,17 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
   const handleOpenAdd = () => {
     setEditingProduct(null)
     const firstCat = categoryList[0]
-    const defaultPrice = firstCat?.agreedPurchasePrice ? String(firstCat.agreedPurchasePrice) : '0.65'
     setFormData({
       sku: '',
       name: '',
       nameKm: '',
       categoryId: firstCat?.id || '',
       brand: '',
-      unit: 'can',
-      altUnit: 'box',
-      conversionRate: '24',
-      purchaseCost: defaultPrice,
-      sellingPrice: '1.50',
-      minStock: '24',
+      unit: 'unit',
+      altUnit: '',
+      conversionRate: '1',
+      purchaseCost: '',
+      minStock: '5',
       description: '',
     })
     setFormError(null)
@@ -93,11 +91,10 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
       nameKm: p.nameKm || '',
       categoryId: p.categoryId,
       brand: p.brand || '',
-      unit: p.unit || 'can',
+      unit: p.unit || 'unit',
       altUnit: p.altUnit || '',
       conversionRate: String(p.conversionRate || '1'),
       purchaseCost: String(p.purchaseCost),
-      sellingPrice: String(p.sellingPrice),
       minStock: String(p.minStock),
       description: p.description || '',
     })
@@ -172,7 +169,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
     { value: 'bottle', label: t('products.units.bottle') },
     { value: 'piece', label: t('products.units.piece') },
     { value: 'pack', label: t('products.units.pack') },
-    { value: 'box', label: t('products.units.box') },
+    { value: 'sheet', label: t('products.units.sheet') },
     { value: 'carton', label: t('products.units.carton') },
     { value: 'kg', label: t('products.units.kg') },
     { value: 'liter', label: t('products.units.liter') },
@@ -180,10 +177,8 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
 
   const altUnitOptions = [
     { value: '', label: t('products.noAltUnit') },
-    { value: 'box', label: t('products.units.box') },
-    { value: 'carton', label: t('products.units.carton') },
-    { value: 'pack', label: t('products.units.pack') },
-    { value: 'case', label: t('products.units.case') },
+    { value: 'កេស', label: t('products.units.carton') },
+    { value: 'កញ្ចប់', label: t('products.units.pack') },
   ]
 
   const productsList: ProductWithDetails[] = data?.products || []
@@ -265,12 +260,10 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
           <table className="w-full text-left text-xs min-w-[900px]">
             <thead className="bg-zinc-50 dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
               <tr>
-                <th className="px-4 py-3">{t('products.sku')}</th>
                 <th className="px-4 py-3">{t('products.nameEn')}</th>
                 <th className="px-4 py-3">{t('products.category')}</th>
                 <th className="px-4 py-3">{t('products.unit')}</th>
                 <th className="px-4 py-3 text-right">{t('products.purchaseCost')}</th>
-                <th className="px-4 py-3 text-right">{t('products.sellingPrice')}</th>
                 <th className="px-4 py-3 text-center">{t('products.physicalStock')}</th>
                 <th className="px-4 py-3 text-center">{t('products.reservedStock')}</th>
                 <th className="px-4 py-3 text-center font-bold text-amber-600 dark:text-amber-400">{t('dashboard.availableStock')}</th>
@@ -281,24 +274,22 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-gray-400">
+                  <td colSpan={9} className="p-8 text-center text-gray-400">
                     {t('common.loading')}
                   </td>
                 </tr>
               ) : productsList.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-gray-400">
+                  <td colSpan={9} className="p-8 text-center text-gray-400">
                     {t('common.noRecords')}
                   </td>
                 </tr>
               ) : (
                 productsList.map((p) => {
                   const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
-                  const subName = language === 'km' ? p.name : p.nameKm
 
                   return (
                     <tr key={p.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                      <td className="px-4 py-3 font-mono text-zinc-600 dark:text-zinc-400 font-semibold">{p.sku}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
@@ -306,7 +297,6 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                           </div>
                           <div>
                             <p className="font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{displayName}</p>
-                            {subName && <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-none">{subName}</p>}
                           </div>
                         </div>
                       </td>
@@ -317,24 +307,21 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                         <span className="font-medium capitalize">{getUnitText(p.unit, t)}</span>
                         {p.altUnit && p.conversionRate && p.conversionRate > 1 && (
                           <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-semibold font-khmer">
-                            1 {getUnitText(p.altUnit, t)} = {p.conversionRate} {getUnitText(p.unit, t)}
+                            1 {getUnitText(p.unit, t)} = {p.conversionRate} {getUnitText(p.altUnit, t)}
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-zinc-700 dark:text-zinc-300">
-                        {formatCurrency(p.purchaseCost)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-zinc-700 dark:text-zinc-300">
-                        {formatCurrency(p.sellingPrice)}
+                        {formatCurrency(p.purchaseCost)} / {getUnitText(p.unit, t)}
                       </td>
                       <td className="px-4 py-3 text-center font-medium text-zinc-600 dark:text-zinc-400">
-                        {formatNumber(p.physicalStock)}
+                        {formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}
                       </td>
                       <td className="px-4 py-3 text-center font-medium text-amber-600">
-                        {formatNumber(p.reservedStock)}
+                        {formatStockQuantity(p.reservedStock, p.unit, p.altUnit, p.conversionRate, t)}
                       </td>
                       <td className="px-4 py-3 text-center font-bold text-amber-600 dark:text-amber-400">
-                        {formatNumber(p.availableStock)}
+                        {formatStockQuantity(p.availableStock, p.unit, p.altUnit, p.conversionRate, t)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge
@@ -393,14 +380,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label={t('products.sku')}
-              required
-              value={formData.sku}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              placeholder="e.g. BEER-ANG-CAN"
-            />
+          <div>
             <Select
               label={t('products.category')}
               required
@@ -472,7 +452,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                 disabled={!formData.altUnit}
                 value={formData.conversionRate}
                 onChange={(e) => setFormData({ ...formData, conversionRate: e.target.value })}
-                placeholder="24"
+                placeholder="1"
               />
             </div>
 
@@ -487,7 +467,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
           </div>
 
           {/* Pricing configuration */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <Input
                 label={`${t('products.purchaseCost')} ($)`}
@@ -501,13 +481,6 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                 <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">{t('products.priceConfiguredByCategory')}</p>
               )}
             </div>
-            <Input
-              label={`${t('products.sellingPrice')} ($)`}
-              type="number"
-              step="0.01"
-              value={formData.sellingPrice}
-              onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
-            />
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t">

@@ -4,6 +4,7 @@ import React from 'react'
 import { CustomerRecordWithItems } from '@/backend/types'
 import { formatPhoneNumber } from '@/backend/phone'
 import { useI18n } from '@/lib/i18n-context'
+import { formatUnitLabel } from '@/lib/unit-labels'
 import { Printer } from 'lucide-react'
 import { Button } from '@/frontend/components/ui/Button'
 
@@ -12,7 +13,7 @@ interface CustomerReceiptProps {
 }
 
 export function CustomerReceipt({ record }: CustomerReceiptProps) {
-  const { formatDate } = useI18n()
+  const { t, formatDate } = useI18n()
 
   const handlePrint = () => {
     window.print()
@@ -74,7 +75,7 @@ export function CustomerReceipt({ record }: CustomerReceiptProps) {
               <div key={item.id} className="flex justify-between">
                 <span className="pr-2">{item.productName}</span>
                 <span className="font-bold whitespace-nowrap">
-                  {item.originalQuantity} {item.unit}
+                  {item.originalQuantity} {formatUnitLabel(item.unit, t)}
                 </span>
               </div>
             ))}

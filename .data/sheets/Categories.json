@@ -67,5 +67,45 @@
     "createdAt": "2026-10-30T09:05:47.286Z",
     "updatedAt": "2026-10-30T09:05:47.289Z",
     "agreedPurchasePrice": "0.7"
+  },
+  {
+    "id": "mvnm9rl1z84n1me",
+    "name": "Beer",
+    "nameKm": "ស្រាបៀរ",
+    "description": "",
+    "active": "true",
+    "createdAt": "2026-10-25T09:19:51.781Z",
+    "updatedAt": "2026-10-30T11:37:31.549Z",
+    "agreedPurchasePrice": ""
+  },
+  {
+    "id": "mvnm9rwzixk4p3x",
+    "name": "Beverages",
+    "nameKm": "ភេសជ្ជៈ",
+    "description": "",
+    "active": "true",
+    "createdAt": "2026-10-25T09:19:51.781Z",
+    "updatedAt": "2026-10-30T11:37:32.446Z",
+    "agreedPurchasePrice": ""
+  },
+  {
+    "id": "mvnm9so76ucm0fd",
+    "name": "Supplies",
+    "nameKm": "សម្ភារៈប្រើប្រាស់",
+    "description": "",
+    "active": "true",
+    "createdAt": "2026-10-25T09:19:51.781Z",
+    "updatedAt": "2026-10-30T11:37:33.259Z",
+    "agreedPurchasePrice": ""
+  },
+  {
+    "id": "mvnm9szl2ef31xq",
+    "name": "Snacks",
+    "nameKm": "អាហារសម្រន់",
+    "description": "",
+    "active": "true",
+    "createdAt": "2026-10-25T09:19:51.781Z",
+    "updatedAt": "2026-10-30T11:37:34.101Z",
+    "agreedPurchasePrice": ""
   }
 ]

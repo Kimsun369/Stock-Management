@@ -3,11 +3,32 @@
 import React, { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { ArrowDownToLine, ArrowUpFromLine, Undo2, Boxes, Search } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Undo2, Search } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { ProductWithDetails } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Badge } from '@/frontend/components/ui/Badge'
+import { formatStockQuantity } from '@/lib/unit-labels'
+
+function getUnitLabel(u: string): string {
+  if (!u) return ''
+  const clean = u.replace(/^products\.units\./, '').toLowerCase().split('/')[0].trim()
+  const map: Record<string, string> = {
+    can: 'កំប៉ុង',
+    bottle: 'ដប',
+    box: 'កេស',
+    carton: 'កេស',
+    pack: 'កញ្ចប់',
+    piece: 'ដំណាត់',
+    kg: 'គីឡូក្រាម',
+    liter: 'លីត្រ',
+    sheet: 'សន្លឹក',
+    case: 'កេស',
+    unit: 'ឯកតា',
+    units: 'ឯកតា',
+  }
+  return map[clean] || u
+}
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -64,12 +85,11 @@ export function InventoryLedgerView() {
 
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[720px]">
+          <table className="w-full text-left text-xs min-w-[640px]">
           <thead className="bg-[#F8FAFC] text-gray-500 font-semibold border-b">
             <tr>
-              <th className="px-5 py-3">{t('products.sku')}</th>
-              <th className="px-4 py-3">{t('products.nameEn')}</th>
-              <th className="px-3 py-3">{t('products.category')}</th>
+              <th className="px-4 py-3">{language === 'km' ? 'ឈ្មោះផលិតផល' : 'Product Name'}</th>
+              <th className="px-3 py-3">{language === 'km' ? 'ប្រភេទ' : 'Category'}</th>
               <th className="px-4 py-3 text-right bg-blue-50/40 text-blue-900">
                 {t('inventory.physical')}
               </th>
@@ -85,13 +105,13 @@ export function InventoryLedgerView() {
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-400">
+                <td colSpan={6} className="p-8 text-center text-gray-400">
                   {t('common.loading')}
                 </td>
               </tr>
             ) : products.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-400">
+                <td colSpan={6} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
@@ -100,19 +120,18 @@ export function InventoryLedgerView() {
                 const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
                 return (
                   <tr key={p.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                    <td className="px-5 py-3 font-mono text-gray-600">{p.sku}</td>
                     <td className="px-4 py-3 font-semibold text-gray-900">{displayName}</td>
                     <td className="px-3 py-3 text-gray-500">
                       {language === 'km' && p.categoryNameKm ? p.categoryNameKm : p.categoryName}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-blue-900 bg-blue-50/20">
-                      {formatNumber(p.physicalStock)} <span className="text-[10px] text-gray-400">{p.unit}</span>
+                      {formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-amber-800 bg-amber-50/20">
-                      {formatNumber(p.reservedStock)} <span className="text-[10px] text-gray-400">{p.unit}</span>
+                      {formatStockQuantity(p.reservedStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-emerald-800 bg-emerald-50/20">
-                      {formatNumber(p.availableStock)} <span className="text-[10px] text-gray-400">{p.unit}</span>
+                      {formatStockQuantity(p.availableStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Badge

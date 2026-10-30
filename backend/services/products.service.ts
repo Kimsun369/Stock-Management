@@ -1,5 +1,6 @@
 import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
 import { Product, ProductWithDetails } from '@/backend/types'
+import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 
 export async function getProducts(filters?: {
   search?: string
@@ -18,10 +19,11 @@ export async function getProducts(filters?: {
   const supMap = new Map(supplierRows.map((s) => [s.id, s.name]))
 
   let list: ProductWithDetails[] = productRows.map((p) => {
+    const cat = catMap.get(p.categoryId)
+    const units = normalizeUnitPair(p, `${cat?.name || ''} ${cat?.nameKm || ''}`)
     const physical = Number(p.physicalStock) || 0
     const reserved = Number(p.reservedStock) || 0
     const available = Math.max(0, physical - reserved)
-    const cat = catMap.get(p.categoryId)
 
     return {
       id: p.id,
@@ -30,11 +32,10 @@ export async function getProducts(filters?: {
       nameKm: p.nameKm || '',
       categoryId: p.categoryId,
       brand: p.brand || '',
-      unit: p.unit || 'units',
-      altUnit: p.altUnit || '',
-      conversionRate: Number(p.conversionRate) || 1,
-      purchaseCost: Number(p.purchaseCost) || 0,
-      sellingPrice: Number(p.sellingPrice) || 0,
+      unit: units.unit || 'units',
+      altUnit: units.altUnit || '',
+      conversionRate: Number(units.conversionRate) || 1,
+      purchaseCost: configuredPurchaseCost(p, units),
       physicalStock: physical,
       reservedStock: reserved,
       availableStock: available,
@@ -77,7 +78,7 @@ export async function getProducts(filters?: {
       (p) =>
         p.name.toLowerCase().includes(q) ||
         (p.nameKm && p.nameKm.toLowerCase().includes(q)) ||
-        p.sku.toLowerCase().includes(q) ||
+        (p.sku || '').toLowerCase().includes(q) ||
         (p.brand && p.brand.toLowerCase().includes(q)) ||
         (p.categoryName && p.categoryName.toLowerCase().includes(q))
     )
@@ -104,8 +105,8 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
 
   const p = productRows.find((row) => row.id === id || row.sku === id)
   if (!p) return null
-
   const cat = categoryRows.find((c) => c.id === p.categoryId)
+  const units = normalizeUnitPair(p, `${cat?.name || ''} ${cat?.nameKm || ''}`)
   const sup = supplierRows.find((s) => s.id === p.defaultSupplierId)
 
   const physical = Number(p.physicalStock) || 0
@@ -118,11 +119,10 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
     nameKm: p.nameKm || '',
     categoryId: p.categoryId,
     brand: p.brand || '',
-    unit: p.unit || 'units',
-    altUnit: p.altUnit || '',
-    conversionRate: Number(p.conversionRate) || 1,
-    purchaseCost: Number(p.purchaseCost) || 0,
-    sellingPrice: Number(p.sellingPrice) || 0,
+    unit: units.unit || 'units',
+    altUnit: units.altUnit || '',
+    conversionRate: Number(units.conversionRate) || 1,
+    purchaseCost: configuredPurchaseCost(p, units),
     physicalStock: physical,
     reservedStock: reserved,
     availableStock: Math.max(0, physical - reserved),
@@ -150,7 +150,6 @@ export async function createProduct(
     altUnit?: string
     conversionRate?: number
     purchaseCost?: number
-    sellingPrice?: number
     minStock?: number
     defaultSupplierId?: string
     description?: string
@@ -159,13 +158,12 @@ export async function createProduct(
   userId: string,
   userName: string
 ): Promise<Product> {
-  const sku = data.sku.trim().toUpperCase()
-  if (!sku) throw new Error('SKU is required')
+  const sku = data.sku?.trim().toUpperCase() || ''
   if (!data.name.trim()) throw new Error('Product name is required')
   if (!data.categoryId) throw new Error('Category is required')
 
   const existing = await getAllRows(SHEETS.Products)
-  if (existing.some((p) => p.sku.toUpperCase() === sku)) {
+  if (sku && existing.some((p) => p.sku?.toUpperCase() === sku)) {
     throw new Error('DUPLICATE_SKU')
   }
 
@@ -185,7 +183,6 @@ export async function createProduct(
   const altUnit = data.altUnit?.trim() || ''
   const conversionRate = String(Number(data.conversionRate) || 1)
   const purchaseCost = String(resolvedCost)
-  const sellingPrice = String(Number(data.sellingPrice) || 0)
   const minStock = String(Number(data.minStock) || 5)
 
   await appendRow(SHEETS.Products, [
@@ -197,7 +194,6 @@ export async function createProduct(
     data.brand?.trim() || '',
     unit,
     purchaseCost,
-    sellingPrice,
     '0', // physicalStock starts at 0
     '0', // reservedStock starts at 0
     minStock,
@@ -217,7 +213,7 @@ export async function createProduct(
     action: 'PRODUCT_CREATED',
     entityType: 'Product',
     entityId: id,
-    details: `Created product "${data.name}" (${sku})`,
+    details: `Created product "${data.name}"`,
   })
 
   return {
@@ -231,7 +227,6 @@ export async function createProduct(
     altUnit,
     conversionRate: Number(conversionRate),
     purchaseCost: Number(purchaseCost),
-    sellingPrice: Number(sellingPrice),
     physicalStock: 0,
     reservedStock: 0,
     minStock: Number(minStock),
@@ -256,7 +251,7 @@ export async function updateProduct(
 
   if (data.sku && data.sku.toUpperCase() !== product.sku.toUpperCase()) {
     const skuConflict = existing.some(
-      (p) => p.id !== id && p.sku.toUpperCase() === data.sku!.toUpperCase()
+      (p) => p.id !== id && (p.sku || '').toUpperCase() === data.sku!.toUpperCase()
     )
     if (skuConflict) throw new Error('DUPLICATE_SKU')
   }
@@ -271,7 +266,6 @@ export async function updateProduct(
   if (data.altUnit !== undefined) updates.altUnit = data.altUnit.trim()
   if (data.conversionRate !== undefined) updates.conversionRate = String(Number(data.conversionRate) || 1)
   if (data.purchaseCost !== undefined) updates.purchaseCost = String(Number(data.purchaseCost))
-  if (data.sellingPrice !== undefined) updates.sellingPrice = String(Number(data.sellingPrice))
   if (data.minStock !== undefined) updates.minStock = String(Number(data.minStock))
   if (data.defaultSupplierId !== undefined) updates.defaultSupplierId = data.defaultSupplierId
   if (data.description !== undefined) updates.description = data.description
@@ -286,7 +280,7 @@ export async function updateProduct(
     action: 'PRODUCT_UPDATED',
     entityType: 'Product',
     entityId: id,
-    details: `Updated product "${data.name || product.name}" (${data.sku || product.sku})`,
+    details: `Updated product "${data.name || product.name}"`,
   })
 
   const updated = await getProductById(id)
@@ -305,7 +299,7 @@ export async function deactivateProduct(id: string, userId: string, userName: st
     action: 'PRODUCT_DEACTIVATED',
     entityType: 'Product',
     entityId: id,
-    details: `Deactivated product "${product.name}" (${product.sku})`,
+    details: `Deactivated product "${product.name}"`,
   })
 }
 

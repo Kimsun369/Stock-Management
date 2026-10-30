@@ -54,7 +54,6 @@ export interface Product {
   altUnit?: string
   conversionRate?: number
   purchaseCost: number
-  sellingPrice: number
   physicalStock: number
   reservedStock: number
   minStock: number
@@ -78,6 +77,8 @@ export interface StockTransaction {
   productId: string
   type: TransactionType
   quantity: number
+  enteredQuantity?: number
+  enteredUnit?: string
   previousBalance: number
   resultingBalance: number
   unitCost: number
@@ -88,6 +89,10 @@ export interface StockTransaction {
   recordedByUserId: string
   createdAt: string
   productName?: string
+  productNameKm?: string
+  productMainUnit?: string
+  productMinorUnit?: string
+  productConversionRate?: number
   recordedByName?: string
 }
 

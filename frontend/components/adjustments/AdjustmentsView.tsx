@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { Plus, Check, X, FileCheck, AlertCircle } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
+import { formatStockQuantity } from '@/lib/unit-labels'
 import { AdjustmentRequest } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
@@ -21,8 +22,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [productId, setProductId] = useState('')
   const [requestedChange, setRequestedChange] = useState('-2')
-  const [reason, setReason] = useState('Broken bottle during cleaning')
-  const [notes, setNotes] = useState('')
+  const [description, setDescription] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -32,8 +32,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
   const handleOpenRequest = () => {
     setProductId(productList[0]?.id || '')
     setRequestedChange('-1')
-    setReason('')
-    setNotes('')
+    setDescription('')
     setErrorMsg(null)
     setIsRequestModalOpen(true)
   }
@@ -50,8 +49,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
         body: JSON.stringify({
           productId: selectedProd.id,
           requestedChange: Number(requestedChange),
-          reason,
-          notes,
+          reason: description,
         }),
       })
 
@@ -90,7 +88,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
 
   const productOptions = productList.map((p: any) => ({
     value: p.id,
-    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} (${p.sku}) — Current: ${p.physicalStock}`,
+    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} — ${t('adjustments.currentQty')}: ${formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}`,
   }))
 
   return (
@@ -114,7 +112,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
               <th className="px-5 py-3">{t('adjustments.product')}</th>
               <th className="px-3 py-3 text-right">{t('adjustments.currentQty')}</th>
               <th className="px-3 py-3 text-right">{t('adjustments.requestedChange')}</th>
-              <th className="px-4 py-3">{t('adjustments.reason')}</th>
+              <th className="px-4 py-3">{t('products.description')}</th>
               <th className="px-3 py-3">{t('common.status')}</th>
               <th className="px-3 py-3">{t('adjustments.submittedBy')}</th>
               <th className="px-4 py-3">{t('common.date')}</th>
@@ -217,10 +215,10 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
 
           {selectedProd && (
             <div className="p-3 bg-blue-50/60 rounded-lg text-xs text-blue-900 flex justify-between">
-              <span>{t('adjustments.currentQty')}: <b>{selectedProd.physicalStock} {selectedProd.unit}</b></span>
+              <span>{t('adjustments.currentQty')}: <b>{formatStockQuantity(selectedProd.physicalStock, selectedProd.unit, selectedProd.altUnit, selectedProd.conversionRate, t)}</b></span>
               <span>
                 {t('adjustments.resultingQty')}:{' '}
-                <b>{Math.max(0, selectedProd.physicalStock + (Number(requestedChange) || 0))} {selectedProd.unit}</b>
+                <b>{formatStockQuantity(Math.max(0, selectedProd.physicalStock + (Number(requestedChange) || 0)), selectedProd.unit, selectedProd.altUnit, selectedProd.conversionRate, t)}</b>
               </span>
             </div>
           )}
@@ -235,18 +233,10 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
           />
 
           <Input
-            label={t('adjustments.reason')}
+            label={t('products.description')}
             required
-            placeholder="e.g. Broken bottle during room clean-up"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-
-          <Input
-            label={t('adjustments.notes')}
-            placeholder="Supporting notes / ភស្តុតាង"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
 
           <div className="flex justify-end gap-2 pt-3 border-t">

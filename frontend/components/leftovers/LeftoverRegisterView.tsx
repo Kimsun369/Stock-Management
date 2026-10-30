@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Trash2, ArrowLeft, Clock, CheckCircle2 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
+import { formatUnitLabel } from '@/lib/unit-labels'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
@@ -96,7 +97,7 @@ export function LeftoverRegisterView() {
 
   const productOptions = productList.map((p: any) => ({
     value: p.id,
-    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} (${p.sku}) — Available: ${p.availableStock}`,
+    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} — Available: ${p.availableStock}`,
   }))
 
   return (
@@ -224,7 +225,7 @@ export function LeftoverRegisterView() {
 
                   {selectedProd && (
                     <p className="text-[10px] text-gray-500">
-                      Available to reserve: <b>{available} {selectedProd.unit}</b>
+                      Available to reserve: <b>{available} {formatUnitLabel(selectedProd.unit, t)}</b>
                     </p>
                   )}
                 </div>

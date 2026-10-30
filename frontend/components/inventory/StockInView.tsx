@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { ArrowDownToLine, CheckCircle2, Calculator, Info } from 'lucide-react'
+import { ArrowDownToLine, CheckCircle2, Calculator, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
+import { formatStockQuantity } from '@/lib/unit-labels'
+import { TransactionDetail } from '@/frontend/components/inventory/TransactionDetail'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -29,13 +31,15 @@ function getUnitText(u: string, t: (k: string) => string): string {
 export function StockInView() {
   const { t, language, formatNumber, formatCurrency, formatDate } = useI18n()
   const { data: products, mutate: mutateProducts } = useSWR('/api/products?limit=100', fetcher)
-  const { data: recentIn, mutate: mutateRecent } = useSWR('/api/stock/in?limit=10', fetcher)
+  const [historyOffset, setHistoryOffset] = useState(0)
+  const [detailItem, setDetailItem] = useState<any>(null)
+  const { data: recentIn, mutate: mutateRecent } = useSWR(`/api/stock/in?limit=10&offset=${historyOffset}`, fetcher)
 
   const [productId, setProductId] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('')
   const [quantity, setQuantity] = useState('2')
   const [invoiceNumber, setInvoiceNumber] = useState('')
-  const [notes, setNotes] = useState('')
+  const [description, setDescription] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -44,33 +48,27 @@ export function StockInView() {
   const activeProductId = productId || productList[0]?.id || ''
   const selectedProduct = productList.find((p: any) => p.id === activeProductId)
 
-  // Determine available units for selected product with guaranteed two scales
-  const rawBase = selectedProduct?.unit || 'can'
+  // Use only the product's configured units; products without packaging stay in their base unit.
+  const rawBase = selectedProduct?.unit || 'unit'
   const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
-  const defaultAlt = baseUnit === 'bottle' ? 'carton' : (baseUnit === 'pack' ? 'box' : 'box')
-  const altUnit = selectedProduct?.altUnit || defaultAlt
-  const conversionRate = Number(selectedProduct?.conversionRate) > 1 ? Number(selectedProduct.conversionRate) : 24
-  const hasConversion = true
+  const altUnit = selectedProduct?.altUnit || ''
+  const conversionRate = Number(selectedProduct?.conversionRate) > 1 ? Number(selectedProduct.conversionRate) : 1
+  const hasConversion = Boolean(altUnit && conversionRate > 1)
+  const currentUnit = selectedUnit || baseUnit
+  const isAltUnitSelected = hasConversion && currentUnit.toLowerCase() === altUnit.toLowerCase()
 
-  // Default selected unit to alternative unit (packaging unit) so staff can easily enter Boxes
-  const currentUnit = selectedUnit || altUnit
-
-  const isAltUnitSelected = currentUnit.toLowerCase() === altUnit.toLowerCase()
   const qtyNum = Number(quantity) || 0
-  const baseQuantityAdded = isAltUnitSelected ? qtyNum * conversionRate : qtyNum
+  const baseQuantityAdded = hasConversion && !isAltUnitSelected ? qtyNum * conversionRate : qtyNum
 
-  const unitCost = Number(selectedProduct?.purchaseCost) || 0
-  const totalCost = Number((unitCost * baseQuantityAdded).toFixed(2))
+  const packageCost = Number(selectedProduct?.purchaseCost) || 0
+  const unitCost = hasConversion ? packageCost / conversionRate : packageCost
+  const totalCost = Number((isAltUnitSelected ? qtyNum * unitCost : qtyNum * packageCost).toFixed(2))
 
   const handleProductChange = (id: string) => {
     setProductId(id)
     const p = productList.find((item: any) => item.id === id)
-    if (p?.altUnit && Number(p.conversionRate) > 1) {
-      setSelectedUnit(p.altUnit)
-    } else {
-      const pBase = (p?.unit || 'can').split('/')[0].trim()
-      setSelectedUnit(pBase === 'bottle' ? 'carton' : 'box')
-    }
+    const pBase = (p?.unit || 'unit').split('/')[0].trim()
+    setSelectedUnit(pBase)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,7 +86,7 @@ export function StockInView() {
           quantity: qtyNum,
           unit: currentUnit,
           invoiceNumber,
-          notes,
+          description,
         }),
       })
 
@@ -97,7 +95,7 @@ export function StockInView() {
 
       setSuccessMsg(true)
       setInvoiceNumber('')
-      setNotes('')
+      setDescription('')
       mutateRecent()
       mutateProducts()
       setTimeout(() => setSuccessMsg(false), 5000)
@@ -110,21 +108,16 @@ export function StockInView() {
 
   const productOptions = productList.map((p: any) => ({
     value: p.id,
-    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} (${p.sku}) — ${t('dashboard.availableStock')}: ${p.availableStock} ${getUnitText(p.unit, t)}`,
+    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} — ${t('dashboard.availableStock')}: ${formatStockQuantity(p.availableStock, p.unit, p.altUnit, p.conversionRate, t)}`,
   }))
 
   const unitOptions = selectedProduct
     ? [
-        {
-          value: baseUnit,
-          label: `${getUnitText(baseUnit, t)} (${t('products.mainUnit')})`,
-        },
-        {
-          value: altUnit,
-          label: `${getUnitText(altUnit, t)} (1 ${getUnitText(altUnit, t)} = ${conversionRate} ${getUnitText(baseUnit, t)})`,
-        },
+        { value: baseUnit, label: getUnitText(baseUnit, t) },
+        ...(hasConversion ? [{ value: altUnit, label: `${getUnitText(altUnit, t)} (1 ${getUnitText(baseUnit, t)} = ${conversionRate} ${getUnitText(altUnit, t)})` }] : []),
       ]
     : []
+
 
   return (
     <div className="space-y-6">
@@ -201,14 +194,14 @@ export function StockInView() {
             </div>
 
             {/* Live Unit Conversion Display */}
-            {isAltUnitSelected && (
+            {hasConversion && !isAltUnitSelected && (
               <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
                 <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
                   <Calculator className="w-4 h-4 text-emerald-600" />
                   <span>{t('stockIn.unitConversionTitle')}</span>
                 </div>
                 <p className="text-xs text-emerald-800">
-                  <span className="font-bold">{quantity} {getUnitText(altUnit, t)}</span> × <span className="font-bold">{conversionRate} {getUnitText(baseUnit, t)}</span> = <span className="font-extrabold text-emerald-950 underline">{baseQuantityAdded} {getUnitText(baseUnit, t)}</span>
+                  <span className="font-bold">{quantity} {getUnitText(baseUnit, t)}</span> × <span className="font-bold">{conversionRate} {getUnitText(altUnit, t)}</span> = <span className="font-extrabold text-emerald-950 underline">{baseQuantityAdded} {getUnitText(altUnit, t)}</span>
                 </p>
                 <p className="text-[11px] text-emerald-700">
                   {t('stockIn.conversionStockNote', { qty: baseQuantityAdded, unit: getUnitText(baseUnit, t) })}
@@ -229,8 +222,8 @@ export function StockInView() {
                 <div>
                   <span className="text-[10px] text-slate-500 uppercase font-bold block">{t('stockIn.unitCost')}</span>
                   <span className="text-sm font-bold text-slate-900">
-                    {formatCurrency(unitCost)} / {getUnitText(baseUnit, t)}
-                    {hasConversion && ` (${formatCurrency(unitCost * conversionRate)} / ${getUnitText(altUnit, t)})`}
+                    {formatCurrency(packageCost)} / {getUnitText(baseUnit, t)}
+                    {hasConversion && ` (${formatCurrency(unitCost)} / ${getUnitText(altUnit, t)})`}
                   </span>
                 </div>
                 <div className="text-right">
@@ -249,12 +242,10 @@ export function StockInView() {
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
               />
-              <Input
-                label={t('stockIn.notes')}
-                placeholder="Delivery notes / កំណត់ចំណាំ"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 font-khmer">
+                {t('products.description')}
+                <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1.5 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30" />
+              </label>
             </div>
 
             <Button type="submit" variant="primary" isLoading={isLoading} className="w-full">
@@ -269,23 +260,28 @@ export function StockInView() {
           <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3">{t('stockIn.recentStockIn')}</h2>
           <div className="flex-1 overflow-y-auto space-y-2">
             {(recentIn || []).map((item: any) => (
-              <div key={item.id} className="p-3 bg-gray-50 rounded-lg text-xs space-y-1">
+              <button type="button" onClick={() => setDetailItem(item)} key={item.id} className="w-full text-left p-3 bg-gray-50 hover:bg-emerald-50 rounded-lg text-xs space-y-1 border border-transparent hover:border-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                 <div className="flex justify-between font-semibold text-zinc-800 dark:text-zinc-200">
-                  <span className="truncate pr-2">{item.productName}</span>
-                  <span className="text-emerald-600 font-bold">+{item.quantity}</span>
+                  <span className="truncate pr-2">{language === 'km' && item.productNameKm ? item.productNameKm : item.productName}</span>
+                  <span className="text-emerald-600 font-bold">+{formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>
                 </div>
                 <div className="flex justify-between text-zinc-500 dark:text-zinc-400 text-[10px]">
                   <span className="truncate max-w-[140px]">{item.notes || item.reference || item.reason}</span>
                   <span>{formatDate(item.createdAt)}</span>
                 </div>
-              </div>
+              </button>
             ))}
             {(!recentIn || recentIn.length === 0) && (
               <p className="text-xs text-gray-400 text-center py-6">{t('common.noRecords')}</p>
             )}
           </div>
+          <div className="flex justify-between pt-3 mt-3 border-t border-zinc-100">
+            <Button type="button" variant="outline" size="sm" disabled={historyOffset === 0} onClick={() => setHistoryOffset(Math.max(0, historyOffset - 10))}><ChevronLeft className="w-4 h-4" />{t('common.previous')}</Button>
+            <Button type="button" variant="outline" size="sm" disabled={!recentIn || recentIn.length < 10} onClick={() => setHistoryOffset(historyOffset + 10)}>{t('common.next')}<ChevronRight className="w-4 h-4" /></Button>
+          </div>
         </div>
       </div>
+      <TransactionDetail item={detailItem} onClose={() => setDetailItem(null)} language={language} t={t} formatDate={formatDate} />
     </div>
   )
 }

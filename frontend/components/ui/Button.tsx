@@ -22,11 +22,11 @@ export function Button({
 
   const variants = {
     primary:
-      'btn-gold',
+      'btn-gold-primary',
     gold:
-      'btn-gold',
+      'btn-gold-primary',
     'gold-outline':
-      'btn-gold-outline',
+      'border border-amber-500 bg-transparent text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40 focus:ring-amber-400',
     secondary:
       'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 focus:ring-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-2xs',
     danger:

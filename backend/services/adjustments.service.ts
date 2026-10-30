@@ -48,6 +48,7 @@ export async function requestAdjustment(params: {
   if (params.requestedChange === 0) {
     throw new Error('Requested change cannot be zero')
   }
+  if (!params.reason.trim()) throw new Error('Adjustment reason is required')
 
   const products = await getAllRows(SHEETS.Products)
   const product = products.find((p) => p.id === params.productId && p.active === 'true')
@@ -147,7 +148,7 @@ export async function reviewAdjustment(params: {
       String(Math.abs(change)),
       String(currentPhysical),
       String(resultingBalance),
-      product.purchaseCost || '0',
+      String((Number(product.purchaseCost) || 0) / (Number(product.conversionRate) > 1 ? Number(product.conversionRate) : 1)),
       'USD',
       `ADJ-${adj.id.slice(-6)}`,
       `Count Correction: ${adj.reason}`,
