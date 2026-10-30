@@ -1,0 +1,26 @@
+[
+  {
+    "id": "admin_mesa",
+    "name": "Mesa Pov (Admin)",
+    "email": "povmesa97@gmail.com",
+    "password": "$2b$10$NXaUBJjNqbPItFLShdzoHO20/0XMZqCJbnV7P8LgfF3Dh5tC5.yAa",
+    "role": "ADMIN",
+    "preferredLanguage": "km",
+    "numeralSystem": "western",
+    "active": "true",
+    "createdAt": "2026-10-25T08:30:03.962Z",
+    "updatedAt": "2026-10-25T08:30:03.962Z"
+  },
+  {
+    "id": "admin_test",
+    "name": "System Admin (អ្នកគ្រប់គ្រង)",
+    "email": "admin@karaokestock.com",
+    "password": "$2b$10$X4yoEy8/fXYAQP7ouPK29eSJ8QGbFpe.eG84LX1YtmR5qNAEM3Hcq",
+    "role": "ADMIN",
+    "preferredLanguage": "km",
+    "numeralSystem": "western",
+    "active": "true",
+    "createdAt": "2026-10-24T12:38:31.710Z",
+    "updatedAt": "2026-10-24T12:38:31.714Z"
+  }
+]

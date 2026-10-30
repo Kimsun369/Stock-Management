@@ -1,0 +1,71 @@
+[
+  {
+    "id": "cat_beer",
+    "name": "Beer & Cider",
+    "nameKm": "ស្រាបៀរ និងស៊ីដឺ",
+    "description": "Cold beers",
+    "active": "true",
+    "createdAt": "2026-10-24T12:38:31.715Z",
+    "updatedAt": "2026-10-24T12:38:31.715Z"
+  },
+  {
+    "id": "mvumaedt5j75148",
+    "name": "Test Beer Cat 1793343284560",
+    "nameKm": "ប្រភេទស្រាបៀរសាកល្បង",
+    "description": "Beer category with agreed price",
+    "active": "true",
+    "createdAt": "2026-10-30T06:54:44.561Z",
+    "updatedAt": "2026-10-30T06:54:44.563Z",
+    "agreedPurchasePrice": "0.7"
+  },
+  {
+    "id": "mvundv3mow0rmzw",
+    "name": "Test Beer Cat 1793345125810",
+    "nameKm": "ប្រភេទស្រាបៀរសាកល្បង",
+    "description": "Beer category with agreed price",
+    "active": "true",
+    "createdAt": "2026-10-30T07:25:25.810Z",
+    "updatedAt": "2026-10-30T07:25:25.813Z",
+    "agreedPurchasePrice": "0.7"
+  },
+  {
+    "id": "mvunxwleirywezz",
+    "name": "Test Beer Cat 1793346060865",
+    "nameKm": "ប្រភេទស្រាបៀរសាកល្បង",
+    "description": "Beer category with agreed price",
+    "active": "true",
+    "createdAt": "2026-10-30T07:41:00.866Z",
+    "updatedAt": "2026-10-30T07:41:00.868Z",
+    "agreedPurchasePrice": "0.7"
+  },
+  {
+    "id": "mvuogn34ruwklr7",
+    "name": "Test Beer Cat 1793346935007",
+    "nameKm": "ប្រភេទស្រាបៀរសាកល្បង",
+    "description": "Beer category with agreed price",
+    "active": "true",
+    "createdAt": "2026-10-30T07:55:35.008Z",
+    "updatedAt": "2026-10-30T07:55:35.010Z",
+    "agreedPurchasePrice": "0.7"
+  },
+  {
+    "id": "mvuqc5hyvypvewd",
+    "name": "Test Beer Cat 1793350084822",
+    "nameKm": "ប្រភេទស្រាបៀរសាកល្បង",
+    "description": "Beer category with agreed price",
+    "active": "true",
+    "createdAt": "2026-10-30T08:48:04.822Z",
+    "updatedAt": "2026-10-30T08:48:04.824Z",
+    "agreedPurchasePrice": "0.7"
+  },
+  {
+    "id": "mvuqyxauflykfxp",
+    "name": "Test Beer Cat 1793351147285",
+    "nameKm": "ប្រភេទស្រាបៀរសាកល្បង",
+    "description": "Beer category with agreed price",
+    "active": "true",
+    "createdAt": "2026-10-30T09:05:47.286Z",
+    "updatedAt": "2026-10-30T09:05:47.289Z",
+    "agreedPurchasePrice": "0.7"
+  }
+]

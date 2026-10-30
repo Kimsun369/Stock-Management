@@ -1,0 +1,277 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum LeftoverStatus {
+  HELD
+  PARTIALLY_COLLECTED
+  FULLY_COLLECTED
+  CANCELLED
+}
+
+enum AdjustmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  STOCK_IN
+  STOCK_OUT
+  RETURN
+  ADJUSTMENT
+  CUSTOMER_RESERVE
+  CUSTOMER_COLLECT
+}
+
+model User {
+  id                 String                     @id @default(cuid())
+  name               String
+  email              String                     @unique
+  password           String?
+  role               Role                       @default(STAFF)
+  preferredLanguage  String                     @default("km")
+  numeralSystem      String                     @default("western")
+  active             Boolean                    @default(true)
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  stockTransactions  StockTransaction[]
+  customerRecords    CustomerLeftoverRecord[]
+  collections        CustomerCollectionTransaction[]
+  adjustmentsReq     StockAdjustmentRequest[]   @relation("SubmittedAdjustments")
+  adjustmentsReview  StockAdjustmentRequest[]   @relation("ReviewedAdjustments")
+  auditLogs          AuditLog[]
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  nameKm      String?
+  description String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+model Supplier {
+  id            String           @id @default(cuid())
+  name          String
+  nameKm        String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  notes         String?
+  active        Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  products        Product[]
+  purchaseRecords PurchaseRecord[]
+}
+
+model Product {
+  id                String                     @id @default(cuid())
+  sku               String                     @unique
+  name              String
+  nameKm            String?
+  categoryId        String
+  category          Category                   @relation(fields: [categoryId], references: [id])
+  brand             String?
+  unit              String                     @default("bottle")
+  purchaseCost      Decimal                    @default(0) @db.Decimal(12, 2)
+  sellingPrice      Decimal?                   @db.Decimal(12, 2)
+  physicalStock     Int                        @default(0)
+  reservedStock     Int                        @default(0)
+  minStock          Int                        @default(5)
+  defaultSupplierId String?
+  defaultSupplier   Supplier?                  @relation(fields: [defaultSupplierId], references: [id])
+  description       String?
+  descriptionKm     String?
+  active            Boolean                    @default(true)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  transactions      StockTransaction[]
+  leftoverItems     CustomerLeftoverItem[]
+  collectionItems   CustomerCollectionTransaction[]
+  adjustments       StockAdjustmentRequest[]
+  purchaseRecords   PurchaseRecord[]
+
+  @@index([sku])
+  @@index([name])
+  @@index([nameKm])
+}
+
+model StockTransaction {
+  id               String          @id @default(cuid())
+  productId        String
+  product          Product         @relation(fields: [productId], references: [id])
+  type             TransactionType
+  quantity         Int
+  previousBalance  Int
+  resultingBalance Int
+  unitCost         Decimal?        @db.Decimal(12, 2)
+  currency         String          @default("USD")
+  reference        String?
+  reason           String?
+  notes            String?
+  recordedByUserId String
+  recordedByUser   User            @relation(fields: [recordedByUserId], references: [id])
+  createdAt        DateTime        @default(now())
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Customer {
+  id              String                   @id @default(cuid())
+  name            String
+  phone           String
+  normalizedPhone String
+  notes           String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  leftoverRecords CustomerLeftoverRecord[]
+
+  @@index([normalizedPhone])
+}
+
+model CustomerLeftoverRecord {
+  id               String                          @id @default(cuid())
+  recordNumber     String                          @unique
+  customerId       String
+  customer         Customer                        @relation(fields: [customerId], references: [id])
+  status           LeftoverStatus                  @default(HELD)
+  storageLocation  String?
+  notes            String?
+  recordedByUserId String
+  recordedByUser   User                            @relation(fields: [recordedByUserId], references: [id])
+  createdAt        DateTime                        @default(now())
+  updatedAt        DateTime                        @updatedAt
+
+  items            CustomerLeftoverItem[]
+  collections      CustomerCollectionTransaction[]
+
+  @@index([recordNumber])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CustomerLeftoverItem {
+  id                String                          @id @default(cuid())
+  leftoverRecordId  String
+  leftoverRecord    CustomerLeftoverRecord          @relation(fields: [leftoverRecordId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product                         @relation(fields: [productId], references: [id])
+  originalQuantity  Int
+  collectedQuantity Int                             @default(0)
+  remainingQuantity Int
+  unit              String
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+
+  collections       CustomerCollectionTransaction[]
+
+  @@index([leftoverRecordId])
+  @@index([productId])
+}
+
+model CustomerCollectionTransaction {
+  id               String                 @id @default(cuid())
+  leftoverRecordId String
+  leftoverRecord   CustomerLeftoverRecord @relation(fields: [leftoverRecordId], references: [id])
+  leftoverItemId   String
+  leftoverItem     CustomerLeftoverItem   @relation(fields: [leftoverItemId], references: [id])
+  productId        String
+  product          Product                @relation(fields: [productId], references: [id])
+  quantityCollected Int
+  staffUserId      String
+  staffUser        User                   @relation(fields: [staffUserId], references: [id])
+  notes            String?
+  createdAt        DateTime               @default(now())
+
+  @@index([leftoverRecordId])
+  @@index([leftoverItemId])
+  @@index([createdAt])
+}
+
+model StockAdjustmentRequest {
+  id                String           @id @default(cuid())
+  productId         String
+  product           Product          @relation(fields: [productId], references: [id])
+  currentQuantity   Int
+  requestedChange   Int
+  reason            String
+  notes             String?
+  status            AdjustmentStatus @default(PENDING)
+  submittedByUserId String
+  submittedByUser   User             @relation("SubmittedAdjustments", fields: [submittedByUserId], references: [id])
+  reviewedByUserId  String?
+  reviewedByUser    User?            @relation("ReviewedAdjustments", fields: [reviewedByUserId], references: [id])
+  reviewNotes       String?
+  createdAt         DateTime         @default(now())
+  reviewedAt        DateTime?
+
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PurchaseRecord {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  quantity      Int
+  unitCost      Decimal   @db.Decimal(12, 2)
+  totalAmount   Decimal   @db.Decimal(12, 2)
+  currency      String    @default("USD")
+  exchangeRate  Decimal   @default(4100) @db.Decimal(10, 2)
+  invoiceNumber String?
+  purchaseDate  DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  @@index([productId])
+  @@index([supplierId])
+  @@index([purchaseDate])
+}
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  details    String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}

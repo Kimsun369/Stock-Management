@@ -1,0 +1,98 @@
+[
+  {
+    "id": "mvmdxeedxx5qmie",
+    "recordId": "mvmdxeec1xkddjj",
+    "productId": "prod_angkor",
+    "productName": "Angkor Beer Can 330ml",
+    "originalQuantity": "12",
+    "collectedQuantity": "6",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-24T12:38:31.716Z",
+    "updatedAt": "2026-10-24T12:38:31.718Z"
+  },
+  {
+    "id": "mvulodutcwa1008",
+    "recordId": "mvulodutsrvclrf",
+    "productId": "prod_angkor",
+    "productName": "Angkor Beer Can 330ml",
+    "originalQuantity": "12",
+    "collectedQuantity": "6",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T06:37:37.444Z",
+    "updatedAt": "2026-10-30T06:37:37.446Z"
+  },
+  {
+    "id": "mvumaedx8nv6rde",
+    "recordId": "mvumaedxyxub73b",
+    "productId": "mvumaedvza8em3s",
+    "productName": "Cambodia Beer Can 330ml",
+    "originalQuantity": "6",
+    "collectedQuantity": "0",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T06:54:44.565Z",
+    "updatedAt": "2026-10-30T06:54:44.565Z"
+  },
+  {
+    "id": "mvundv3tveec4qm",
+    "recordId": "mvundv3tx99fakh",
+    "productId": "mvundv3p8uv9r4t",
+    "productName": "Cambodia Beer Can 330ml",
+    "originalQuantity": "6",
+    "collectedQuantity": "0",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T07:25:25.817Z",
+    "updatedAt": "2026-10-30T07:25:25.817Z"
+  },
+  {
+    "id": "mvunxwlljlutnge",
+    "recordId": "mvunxwll5hwb70x",
+    "productId": "mvunxwlhhuooxab",
+    "productName": "Cambodia Beer Can 330ml",
+    "originalQuantity": "6",
+    "collectedQuantity": "0",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T07:41:00.873Z",
+    "updatedAt": "2026-10-30T07:41:00.873Z"
+  },
+  {
+    "id": "mvuogn3a27lj3hf",
+    "recordId": "mvuogn3aua7a85h",
+    "productId": "mvuogn36p4pgidn",
+    "productName": "Cambodia Beer Can 330ml",
+    "originalQuantity": "6",
+    "collectedQuantity": "0",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T07:55:35.014Z",
+    "updatedAt": "2026-10-30T07:55:35.014Z"
+  },
+  {
+    "id": "mvuqc5i6ottow98",
+    "recordId": "mvuqc5i6mgps9vz",
+    "productId": "mvuqc5i1g9vny6u",
+    "productName": "Cambodia Beer Can 330ml",
+    "originalQuantity": "6",
+    "collectedQuantity": "0",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T08:48:04.830Z",
+    "updatedAt": "2026-10-30T08:48:04.830Z"
+  },
+  {
+    "id": "mvuqyxb9992j4l2",
+    "recordId": "mvuqyxb8wuwqr7y",
+    "productId": "mvuqyxayuj4jkw1",
+    "productName": "Cambodia Beer Can 330ml",
+    "originalQuantity": "6",
+    "collectedQuantity": "0",
+    "remainingQuantity": "6",
+    "unit": "can",
+    "createdAt": "2026-10-30T09:05:47.300Z",
+    "updatedAt": "2026-10-30T09:05:47.300Z"
+  }
+]

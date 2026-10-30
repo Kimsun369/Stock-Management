@@ -1,0 +1,402 @@
+[
+  {
+    "id": "mvmdxeed50nbp3q",
+    "actorId": "admin_test",
+    "actorName": "Admin",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvmdxeec1xkddjj",
+    "details": "Registered leftover record CLR-2026-8893 for Sophea Kim (គីម សុភា) (០១២ ៩៩៩ ៨៨៨). Items: 12 can of Angkor Beer Can 330ml",
+    "createdAt": "2026-10-24T12:38:31.717Z"
+  },
+  {
+    "id": "mvmdxeefw20vx4m",
+    "actorId": "admin_test",
+    "actorName": "Admin",
+    "action": "CUSTOMER_COLLECT",
+    "entityType": "CustomerRecord",
+    "entityId": "mvmdxeec1xkddjj",
+    "details": "Customer Sophea Kim (គីម សុភា) collected items on receipt CLR-2026-8893: 6 can of Angkor Beer Can 330ml. Status: PARTIALLY_COLLECTED",
+    "createdAt": "2026-10-24T12:38:31.719Z"
+  },
+  {
+    "id": "mvuloduucupjmg0",
+    "actorId": "admin_mesa",
+    "actorName": "Admin",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvulodutsrvclrf",
+    "details": "Registered leftover record CLR-2026-4040 for Sophea Kim (គីម សុភា) (០១២ ៩៩៩ ៨៨៨). Items: 12 can of Angkor Beer Can 330ml",
+    "createdAt": "2026-10-30T06:37:37.446Z"
+  },
+  {
+    "id": "mvuloduvfm98amg",
+    "actorId": "admin_mesa",
+    "actorName": "Admin",
+    "action": "CUSTOMER_COLLECT",
+    "entityType": "CustomerRecord",
+    "entityId": "mvulodutsrvclrf",
+    "details": "Customer Sophea Kim (គីម សុភា) collected items on receipt CLR-2026-4040: 6 can of Angkor Beer Can 330ml. Status: PARTIALLY_COLLECTED",
+    "createdAt": "2026-10-30T06:37:37.447Z"
+  },
+  {
+    "id": "mvumaedu5sfum2j",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_CREATED",
+    "entityType": "Category",
+    "entityId": "mvumaedt5j75148",
+    "details": "Created category \"Test Beer Cat 1793343284560\" with agreed price $0.65",
+    "createdAt": "2026-10-30T06:54:44.562Z"
+  },
+  {
+    "id": "mvumaedvoug5zny",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_UPDATED",
+    "entityType": "Category",
+    "entityId": "mvumaedt5j75148",
+    "details": "Updated category \"Test Beer Cat 1793343284560\"",
+    "createdAt": "2026-10-30T06:54:44.563Z"
+  },
+  {
+    "id": "mvumaedvqsgydw1",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "PRODUCT_CREATED",
+    "entityType": "Product",
+    "entityId": "mvumaedvza8em3s",
+    "details": "Created product \"Cambodia Beer Can 330ml\" (BEER-BOX-1793343284563)",
+    "createdAt": "2026-10-30T06:54:44.563Z"
+  },
+  {
+    "id": "mvumaedwcnk7xlh",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_IN",
+    "entityType": "Product",
+    "entityId": "mvumaedvza8em3s",
+    "details": "Added 2 box (2 × 24 = 48 can) of Cambodia Beer Can 330ml. Stock updated: 0 -> 48",
+    "createdAt": "2026-10-30T06:54:44.564Z"
+  },
+  {
+    "id": "mvumaedxemisj5k",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_OUT",
+    "entityType": "Product",
+    "entityId": "mvumaedvza8em3s",
+    "details": "Dispensed 1 box (1 × 24 = 24 can) of Cambodia Beer Can 330ml (Room Service Room 202). Stock: 48 -> 24",
+    "createdAt": "2026-10-30T06:54:44.565Z"
+  },
+  {
+    "id": "mvumaedyc2vh8i3",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvumaedxyxub73b",
+    "details": "Registered leftover record CLR-2026-7699 for Dara Chan (098 765 432). Items: 6 can of Cambodia Beer Can 330ml",
+    "createdAt": "2026-10-30T06:54:44.566Z"
+  },
+  {
+    "id": "mvundv3opqwakja",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_CREATED",
+    "entityType": "Category",
+    "entityId": "mvundv3mow0rmzw",
+    "details": "Created category \"Test Beer Cat 1793345125810\" with agreed price $0.65",
+    "createdAt": "2026-10-30T07:25:25.812Z"
+  },
+  {
+    "id": "mvundv3psr7fckx",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_UPDATED",
+    "entityType": "Category",
+    "entityId": "mvundv3mow0rmzw",
+    "details": "Updated category \"Test Beer Cat 1793345125810\"",
+    "createdAt": "2026-10-30T07:25:25.813Z"
+  },
+  {
+    "id": "mvundv3qzjw82j0",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "PRODUCT_CREATED",
+    "entityType": "Product",
+    "entityId": "mvundv3p8uv9r4t",
+    "details": "Created product \"Cambodia Beer Can 330ml\" (BEER-BOX-1793345125813)",
+    "createdAt": "2026-10-30T07:25:25.814Z"
+  },
+  {
+    "id": "mvundv3rodyj6gu",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_IN",
+    "entityType": "Product",
+    "entityId": "mvundv3p8uv9r4t",
+    "details": "Added 2 box (2 × 24 = 48 can) of Cambodia Beer Can 330ml. Stock updated: 0 -> 48",
+    "createdAt": "2026-10-30T07:25:25.815Z"
+  },
+  {
+    "id": "mvundv3sroh3g58",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_OUT",
+    "entityType": "Product",
+    "entityId": "mvundv3p8uv9r4t",
+    "details": "Dispensed 1 box (1 × 24 = 24 can) of Cambodia Beer Can 330ml (Room Service Room 202). Stock: 48 -> 24",
+    "createdAt": "2026-10-30T07:25:25.816Z"
+  },
+  {
+    "id": "mvundv3tbdn7ug6",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvundv3tx99fakh",
+    "details": "Registered leftover record CLR-2026-8040 for Dara Chan (098 765 432). Items: 6 can of Cambodia Beer Can 330ml",
+    "createdAt": "2026-10-30T07:25:25.817Z"
+  },
+  {
+    "id": "mvunxwlf456qxmb",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_CREATED",
+    "entityType": "Category",
+    "entityId": "mvunxwleirywezz",
+    "details": "Created category \"Test Beer Cat 1793346060865\" with agreed price $0.65",
+    "createdAt": "2026-10-30T07:41:00.867Z"
+  },
+  {
+    "id": "mvunxwlh32dq9a8",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_UPDATED",
+    "entityType": "Category",
+    "entityId": "mvunxwleirywezz",
+    "details": "Updated category \"Test Beer Cat 1793346060865\"",
+    "createdAt": "2026-10-30T07:41:00.869Z"
+  },
+  {
+    "id": "mvunxwli6u6o4ld",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "PRODUCT_CREATED",
+    "entityType": "Product",
+    "entityId": "mvunxwlhhuooxab",
+    "details": "Created product \"Cambodia Beer Can 330ml\" (BEER-BOX-1793346060869)",
+    "createdAt": "2026-10-30T07:41:00.870Z"
+  },
+  {
+    "id": "mvunxwlj5suhao1",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_IN",
+    "entityType": "Product",
+    "entityId": "mvunxwlhhuooxab",
+    "details": "Added 2 box (2 × 24 = 48 can) of Cambodia Beer Can 330ml. Stock updated: 0 -> 48",
+    "createdAt": "2026-10-30T07:41:00.871Z"
+  },
+  {
+    "id": "mvunxwlk30jpzdc",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_OUT",
+    "entityType": "Product",
+    "entityId": "mvunxwlhhuooxab",
+    "details": "Dispensed 1 box (1 × 24 = 24 can) of Cambodia Beer Can 330ml (Room Service Room 202). Stock: 48 -> 24",
+    "createdAt": "2026-10-30T07:41:00.872Z"
+  },
+  {
+    "id": "mvunxwlm1ozd6x8",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvunxwll5hwb70x",
+    "details": "Registered leftover record CLR-2026-7897 for Dara Chan (098 765 432). Items: 6 can of Cambodia Beer Can 330ml",
+    "createdAt": "2026-10-30T07:41:00.874Z"
+  },
+  {
+    "id": "mvuogn350i2zoda",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_CREATED",
+    "entityType": "Category",
+    "entityId": "mvuogn34ruwklr7",
+    "details": "Created category \"Test Beer Cat 1793346935007\" with agreed price $0.65",
+    "createdAt": "2026-10-30T07:55:35.009Z"
+  },
+  {
+    "id": "mvuogn36xh65v7k",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_UPDATED",
+    "entityType": "Category",
+    "entityId": "mvuogn34ruwklr7",
+    "details": "Updated category \"Test Beer Cat 1793346935007\"",
+    "createdAt": "2026-10-30T07:55:35.010Z"
+  },
+  {
+    "id": "mvuogn378ezfrf3",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "PRODUCT_CREATED",
+    "entityType": "Product",
+    "entityId": "mvuogn36p4pgidn",
+    "details": "Created product \"Cambodia Beer Can 330ml\" (BEER-BOX-1793346935010)",
+    "createdAt": "2026-10-30T07:55:35.011Z"
+  },
+  {
+    "id": "mvuogn3847vr8iz",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_IN",
+    "entityType": "Product",
+    "entityId": "mvuogn36p4pgidn",
+    "details": "Added 2 box (2 × 24 = 48 can) of Cambodia Beer Can 330ml. Stock updated: 0 -> 48",
+    "createdAt": "2026-10-30T07:55:35.012Z"
+  },
+  {
+    "id": "mvuogn39xqri8t0",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_OUT",
+    "entityType": "Product",
+    "entityId": "mvuogn36p4pgidn",
+    "details": "Dispensed 1 box (1 × 24 = 24 can) of Cambodia Beer Can 330ml (Room Service Room 202). Stock: 48 -> 24",
+    "createdAt": "2026-10-30T07:55:35.013Z"
+  },
+  {
+    "id": "mvuogn3azo0dl4z",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvuogn3aua7a85h",
+    "details": "Registered leftover record CLR-2026-4446 for Dara Chan (098 765 432). Items: 6 can of Cambodia Beer Can 330ml",
+    "createdAt": "2026-10-30T07:55:35.014Z"
+  },
+  {
+    "id": "mvuqc5hz2c0q4b0",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_CREATED",
+    "entityType": "Category",
+    "entityId": "mvuqc5hyvypvewd",
+    "details": "Created category \"Test Beer Cat 1793350084822\" with agreed price $0.65",
+    "createdAt": "2026-10-30T08:48:04.823Z"
+  },
+  {
+    "id": "mvuqc5i1mkxbjhp",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_UPDATED",
+    "entityType": "Category",
+    "entityId": "mvuqc5hyvypvewd",
+    "details": "Updated category \"Test Beer Cat 1793350084822\"",
+    "createdAt": "2026-10-30T08:48:04.825Z"
+  },
+  {
+    "id": "mvuqc5i1b8j1178",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "PRODUCT_CREATED",
+    "entityType": "Product",
+    "entityId": "mvuqc5i1g9vny6u",
+    "details": "Created product \"Cambodia Beer Can 330ml\" (BEER-BOX-1793350084825)",
+    "createdAt": "2026-10-30T08:48:04.825Z"
+  },
+  {
+    "id": "mvuqc5i3ivnzzyq",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_IN",
+    "entityType": "Product",
+    "entityId": "mvuqc5i1g9vny6u",
+    "details": "Added 2 box (2 × 24 = 48 can) of Cambodia Beer Can 330ml. Stock updated: 0 -> 48",
+    "createdAt": "2026-10-30T08:48:04.827Z"
+  },
+  {
+    "id": "mvuqc5i5kr0f3i2",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_OUT",
+    "entityType": "Product",
+    "entityId": "mvuqc5i1g9vny6u",
+    "details": "Dispensed 1 box (1 × 24 = 24 can) of Cambodia Beer Can 330ml (Room Service Room 202). Stock: 48 -> 24",
+    "createdAt": "2026-10-30T08:48:04.829Z"
+  },
+  {
+    "id": "mvuqc5i6kapj2ha",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvuqc5i6mgps9vz",
+    "details": "Registered leftover record CLR-2026-9808 for Dara Chan (098 765 432). Items: 6 can of Cambodia Beer Can 330ml",
+    "createdAt": "2026-10-30T08:48:04.830Z"
+  },
+  {
+    "id": "mvuqyxavs38rwkr",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_CREATED",
+    "entityType": "Category",
+    "entityId": "mvuqyxauflykfxp",
+    "details": "Created category \"Test Beer Cat 1793351147285\" with agreed price $0.65",
+    "createdAt": "2026-10-30T09:05:47.287Z"
+  },
+  {
+    "id": "mvuqyxaxu7o46cp",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "CATEGORY_UPDATED",
+    "entityType": "Category",
+    "entityId": "mvuqyxauflykfxp",
+    "details": "Updated category \"Test Beer Cat 1793351147285\"",
+    "createdAt": "2026-10-30T09:05:47.289Z"
+  },
+  {
+    "id": "mvuqyxazxotzt34",
+    "actorId": "admin_tester",
+    "actorName": "Admin Tester",
+    "action": "PRODUCT_CREATED",
+    "entityType": "Product",
+    "entityId": "mvuqyxayuj4jkw1",
+    "details": "Created product \"Cambodia Beer Can 330ml\" (BEER-BOX-1793351147290)",
+    "createdAt": "2026-10-30T09:05:47.291Z"
+  },
+  {
+    "id": "mvuqyxb36rzy3ih",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_IN",
+    "entityType": "Product",
+    "entityId": "mvuqyxayuj4jkw1",
+    "details": "Added 2 box (2 × 24 = 48 can) of Cambodia Beer Can 330ml. Stock updated: 0 -> 48",
+    "createdAt": "2026-10-30T09:05:47.295Z"
+  },
+  {
+    "id": "mvuqyxb6lp63ri9",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "STOCK_OUT",
+    "entityType": "Product",
+    "entityId": "mvuqyxayuj4jkw1",
+    "details": "Dispensed 1 box (1 × 24 = 24 can) of Cambodia Beer Can 330ml (Room Service Room 202). Stock: 48 -> 24",
+    "createdAt": "2026-10-30T09:05:47.298Z"
+  },
+  {
+    "id": "mvuqyxbaas0odjb",
+    "actorId": "staff_tester",
+    "actorName": "Staff Member",
+    "action": "REGISTER_CUSTOMER_LEFTOVER",
+    "entityType": "CustomerRecord",
+    "entityId": "mvuqyxb8wuwqr7y",
+    "details": "Registered leftover record CLR-2026-9446 for Dara Chan (098 765 432). Items: 6 can of Cambodia Beer Can 330ml",
+    "createdAt": "2026-10-30T09:05:47.302Z"
+  }
+]

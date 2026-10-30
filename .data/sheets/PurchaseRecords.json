@@ -1,0 +1,80 @@
+[
+  {
+    "id": "pur_1793343284564_x3a32",
+    "productId": "mvumaedvza8em3s",
+    "supplierId": "",
+    "quantity": "48",
+    "unitCost": "0.7",
+    "totalAmount": "33.6",
+    "currency": "USD",
+    "exchangeRate": "4100",
+    "invoiceNumber": "INV-TEST-001",
+    "purchaseDate": "2026-10-30T06:54:44.563Z",
+    "createdAt": "2026-10-30T06:54:44.563Z"
+  },
+  {
+    "id": "pur_1793345125814_kdgz7",
+    "productId": "mvundv3p8uv9r4t",
+    "supplierId": "",
+    "quantity": "48",
+    "unitCost": "0.7",
+    "totalAmount": "33.6",
+    "currency": "USD",
+    "exchangeRate": "4100",
+    "invoiceNumber": "INV-TEST-001",
+    "purchaseDate": "2026-10-30T07:25:25.814Z",
+    "createdAt": "2026-10-30T07:25:25.814Z"
+  },
+  {
+    "id": "pur_1793346060871_rkzt3",
+    "productId": "mvunxwlhhuooxab",
+    "supplierId": "",
+    "quantity": "48",
+    "unitCost": "0.7",
+    "totalAmount": "33.6",
+    "currency": "USD",
+    "exchangeRate": "4100",
+    "invoiceNumber": "INV-TEST-001",
+    "purchaseDate": "2026-10-30T07:41:00.870Z",
+    "createdAt": "2026-10-30T07:41:00.870Z"
+  },
+  {
+    "id": "pur_1793346935012_attft",
+    "productId": "mvuogn36p4pgidn",
+    "supplierId": "",
+    "quantity": "48",
+    "unitCost": "0.7",
+    "totalAmount": "33.6",
+    "currency": "USD",
+    "exchangeRate": "4100",
+    "invoiceNumber": "INV-TEST-001",
+    "purchaseDate": "2026-10-30T07:55:35.011Z",
+    "createdAt": "2026-10-30T07:55:35.011Z"
+  },
+  {
+    "id": "pur_1793350084827_nh53f",
+    "productId": "mvuqc5i1g9vny6u",
+    "supplierId": "",
+    "quantity": "48",
+    "unitCost": "0.7",
+    "totalAmount": "33.6",
+    "currency": "USD",
+    "exchangeRate": "4100",
+    "invoiceNumber": "INV-TEST-001",
+    "purchaseDate": "2026-10-30T08:48:04.826Z",
+    "createdAt": "2026-10-30T08:48:04.826Z"
+  },
+  {
+    "id": "pur_1793351147294_3jwtc",
+    "productId": "mvuqyxayuj4jkw1",
+    "supplierId": "",
+    "quantity": "48",
+    "unitCost": "0.7",
+    "totalAmount": "33.6",
+    "currency": "USD",
+    "exchangeRate": "4100",
+    "invoiceNumber": "INV-TEST-001",
+    "purchaseDate": "2026-10-30T09:05:47.292Z",
+    "createdAt": "2026-10-30T09:05:47.292Z"
+  }
+]

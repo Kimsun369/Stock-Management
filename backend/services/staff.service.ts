@@ -1,0 +1,138 @@
+import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
+import { User, Role } from '@/backend/types'
+import bcrypt from 'bcryptjs'
+
+export async function getStaffUsers(): Promise<Omit<User, 'password'>[]> {
+  const rows = await getAllRows(SHEETS.Users)
+  return rows.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role as Role,
+    preferredLanguage: u.preferredLanguage || 'km',
+    numeralSystem: u.numeralSystem || 'western',
+    active: u.active === 'true',
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  }))
+}
+
+export async function createStaffUser(
+  data: {
+    name: string
+    email: string
+    password?: string
+    role?: Role
+  },
+  adminUserId: string,
+  adminUserName: string
+): Promise<Omit<User, 'password'>> {
+  if (!data.name.trim()) throw new Error('Name is required')
+  if (!data.email.trim()) throw new Error('Email is required')
+
+  const email = data.email.toLowerCase().trim()
+  const users = await getAllRows(SHEETS.Users)
+  if (users.some((u) => u.email.toLowerCase().trim() === email)) {
+    throw new Error('DUPLICATE_EMAIL')
+  }
+
+  const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : ''
+  const id = generateId()
+  const now = new Date().toISOString()
+  const role: Role = data.role === 'ADMIN' ? 'ADMIN' : 'STAFF'
+
+  await appendRow(SHEETS.Users, [
+    id,
+    data.name.trim(),
+    email,
+    hashedPassword,
+    role,
+    'km', // default preferredLanguage
+    'western', // default numeralSystem
+    'true',
+    now,
+    now,
+  ])
+
+  await appendAuditLog({
+    actorId: adminUserId,
+    actorName: adminUserName,
+    action: 'STAFF_CREATED',
+    entityType: 'User',
+    entityId: id,
+    details: `Created user "${data.name}" (${email}) with role ${role}`,
+  })
+
+  return {
+    id,
+    name: data.name.trim(),
+    email,
+    role,
+    preferredLanguage: 'km',
+    numeralSystem: 'western',
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+export async function updateStaffUser(
+  id: string,
+  data: {
+    name?: string
+    role?: Role
+    active?: boolean
+    password?: string
+  },
+  adminUserId: string,
+  adminUserName: string
+): Promise<void> {
+  const users = await getAllRows(SHEETS.Users)
+  const user = users.find((u) => u.id === id)
+  if (!user) throw new Error('USER_NOT_FOUND')
+
+  const updates: Record<string, string> = {}
+  if (data.name) updates.name = data.name.trim()
+  if (data.role) updates.role = data.role
+  if (data.active !== undefined) updates.active = String(data.active)
+  if (data.password) {
+    updates.password = await bcrypt.hash(data.password, 10)
+  }
+
+  await updateRowById(SHEETS.Users, id, updates)
+
+  await appendAuditLog({
+    actorId: adminUserId,
+    actorName: adminUserName,
+    action: 'STAFF_UPDATED',
+    entityType: 'User',
+    entityId: id,
+    details: `Updated user "${user.name}" (${user.email}). Changes: ${JSON.stringify(data)}`,
+  })
+}
+
+export async function deleteStaffUser(
+  id: string,
+  adminUserId: string,
+  adminUserName: string
+): Promise<void> {
+  const users = await getAllRows(SHEETS.Users)
+  const user = users.find((u) => u.id === id)
+  if (!user) throw new Error('USER_NOT_FOUND')
+
+  // Cannot delete yourself
+  if (id === adminUserId) throw new Error('CANNOT_DELETE_SELF')
+
+  // Deactivate instead of hard-delete for audit trail
+  await updateRowById(SHEETS.Users, id, { active: 'false' })
+
+  await appendAuditLog({
+    actorId: adminUserId,
+    actorName: adminUserName,
+    action: 'STAFF_DELETED',
+    entityType: 'User',
+    entityId: id,
+    details: `Deactivated user "${user.name}" (${user.email})`,
+  })
+}
+

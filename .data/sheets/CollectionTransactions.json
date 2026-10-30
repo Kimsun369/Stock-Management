@@ -1,0 +1,22 @@
+[
+  {
+    "id": "mvmdxeeezyxd2eb",
+    "recordId": "mvmdxeec1xkddjj",
+    "itemId": "mvmdxeedxx5qmie",
+    "productId": "prod_angkor",
+    "quantityCollected": "6",
+    "staffUserId": "admin_test",
+    "notes": "Collected 6 cans",
+    "createdAt": "2026-10-24T12:38:31.718Z"
+  },
+  {
+    "id": "mvuloduv2g1hi85",
+    "recordId": "mvulodutsrvclrf",
+    "itemId": "mvulodutcwa1008",
+    "productId": "prod_angkor",
+    "quantityCollected": "6",
+    "staffUserId": "admin_mesa",
+    "notes": "Collected 6 cans",
+    "createdAt": "2026-10-30T06:37:37.446Z"
+  }
+]
