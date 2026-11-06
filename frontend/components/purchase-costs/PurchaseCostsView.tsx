@@ -4,12 +4,12 @@ import React from 'react'
 import useSWR from 'swr'
 import { Receipt } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
-import { Badge } from '@/frontend/components/ui/Badge'
+import { formatUnitLabel } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function PurchaseCostsView() {
-  const { t, formatCurrency, formatDate } = useI18n()
+  const { t, formatCurrency, formatNumber } = useI18n()
   const { data: purchases, isLoading } = useSWR('/api/reports?type=purchases', fetcher)
 
   const items = purchases || []
@@ -61,8 +61,12 @@ export function PurchaseCostsView() {
                   <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{it.date}</td>
                   <td className="px-4 py-3 font-semibold text-gray-900">{it.product}</td>
                   <td className="px-4 py-3 text-gray-600">{it.supplier}</td>
-                  <td className="px-3 py-3 text-right font-medium text-gray-800">{it.quantity}</td>
-                  <td className="px-3 py-3 text-right text-gray-600">{formatCurrency(it.unitCost)}</td>
+                  <td className="px-3 py-3 text-right font-medium text-gray-800">
+                    {formatNumber(it.quantity)}{formatUnitLabel(it.unit, t)}
+                  </td>
+                  <td className="px-3 py-3 text-right text-gray-600">
+                    {formatCurrency(it.unitCost)}/{formatUnitLabel(it.unit, t)}
+                  </td>
                   <td className="px-4 py-3 text-right font-bold text-gray-900">{formatCurrency(it.totalAmount)}</td>
                   <td className="px-4 py-3 font-mono text-gray-500">{it.invoiceNumber || '—'}</td>
                 </tr>

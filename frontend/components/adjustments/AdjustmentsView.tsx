@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Plus, Check, X, FileCheck, AlertCircle } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
-import { formatStockQuantity } from '@/lib/unit-labels'
+import { formatStockQuantity, formatUnitLabel } from '@/lib/unit-labels'
 import { AdjustmentRequest } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
@@ -20,7 +20,9 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
   const { data: products } = useSWR('/api/products?limit=100', fetcher)
 
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+  const [detailAdjustment, setDetailAdjustment] = useState<AdjustmentRequest | null>(null)
   const [productId, setProductId] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
   const [requestedChange, setRequestedChange] = useState('-2')
   const [description, setDescription] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -28,9 +30,21 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
 
   const productList = products?.products || []
   const selectedProd = productList.find((p: any) => p.id === (productId || productList[0]?.id))
+  const mainUnit = selectedProd?.unit || 'unit'
+  const minorUnit = selectedProd?.altUnit || ''
+  const conversionRate = Number(selectedProd?.conversionRate) > 1 ? Number(selectedProd.conversionRate) : 1
+  const hasConversion = Boolean(minorUnit && conversionRate > 1)
+  const currentUnit = selectedUnit || mainUnit
+  const isMainUnit = currentUnit.toLowerCase() === mainUnit.toLowerCase()
+  const requestedChangeInStockUnits = (Number(requestedChange) || 0) * (hasConversion && isMainUnit ? conversionRate : 1)
+  const unitOptions = selectedProd ? [
+    { value: mainUnit, label: formatUnitLabel(mainUnit, t) },
+    ...(hasConversion ? [{ value: minorUnit, label: formatUnitLabel(minorUnit, t) }] : []),
+  ] : []
 
   const handleOpenRequest = () => {
     setProductId(productList[0]?.id || '')
+    setSelectedUnit(productList[0]?.unit || '')
     setRequestedChange('-1')
     setDescription('')
     setErrorMsg(null)
@@ -48,7 +62,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: selectedProd.id,
-          requestedChange: Number(requestedChange),
+          requestedChange: requestedChangeInStockUnits,
           reason: description,
         }),
       })
@@ -62,27 +76,6 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
       setErrorMsg(err.message)
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleReview = async (id: string, action: 'approve' | 'reject') => {
-    const reviewNotes = window.prompt(
-      `Enter admin review note for ${action.toUpperCase()}:`,
-      action === 'approve' ? 'Approved count adjustment' : 'Rejected'
-    )
-    if (reviewNotes === null) return
-
-    try {
-      const res = await fetch(`/api/adjustments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, reviewNotes }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to review')
-      mutate()
-    } catch (err: any) {
-      alert(err.message)
     }
   }
 
@@ -116,30 +109,31 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
               <th className="px-3 py-3">{t('common.status')}</th>
               <th className="px-3 py-3">{t('adjustments.submittedBy')}</th>
               <th className="px-4 py-3">{t('common.date')}</th>
-              {userRole === 'ADMIN' && <th className="px-4 py-3 text-right">{t('common.actions')}</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-400">
+                <td colSpan={7} className="p-8 text-center text-gray-400">
                   {t('common.loading')}
                 </td>
               </tr>
             ) : (adjustments || []).length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-400">
+                <td colSpan={7} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
             ) : (
               (adjustments || []).map((adj) => (
-                <tr key={adj.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
+                <tr key={adj.id} onClick={() => setDetailAdjustment(adj)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setDetailAdjustment(adj) }} tabIndex={0} role="button" aria-label={`${t('common.view')} ${adj.productName}`} className="cursor-pointer hover:bg-zinc-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 dark:hover:bg-zinc-800/40">
                   <td className="px-5 py-3 font-semibold text-gray-900">{adj.productName}</td>
-                  <td className="px-3 py-3 text-right text-gray-600 font-mono">{adj.currentQuantity}</td>
+                  <td className="px-3 py-3 text-right text-gray-600 font-mono">
+                    {formatStockQuantity(adj.currentQuantity, adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
+                  </td>
                   <td className="px-3 py-3 text-right font-mono font-bold">
                     <span className={adj.requestedChange > 0 ? 'text-emerald-600' : 'text-red-600'}>
-                      {adj.requestedChange > 0 ? `+${adj.requestedChange}` : adj.requestedChange}
+                      {adj.requestedChange > 0 ? '+' : '-'}{formatStockQuantity(Math.abs(adj.requestedChange), adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{adj.reason}</td>
@@ -154,36 +148,6 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
                   </td>
                   <td className="px-3 py-3 text-gray-600">{adj.submittedByName || 'Staff'}</td>
                   <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(adj.createdAt)}</td>
-                  {userRole === 'ADMIN' && (
-                    <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
-                      {adj.status === 'PENDING' ? (
-                        <>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleReview(adj.id, 'approve')}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-[11px] py-1 px-2"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>{t('adjustments.approve')}</span>
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleReview(adj.id, 'reject')}
-                            className="text-[11px] py-1 px-2"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>{t('adjustments.reject')}</span>
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="text-[11px] text-gray-400">
-                          {adj.reviewNotes ? `Note: ${adj.reviewNotes}` : 'Reviewed'}
-                        </span>
-                      )}
-                    </td>
-                  )}
                 </tr>
               ))
             )}
@@ -191,6 +155,18 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
         </table>
         </div>
       </div>
+
+      <Modal isOpen={Boolean(detailAdjustment)} onClose={() => setDetailAdjustment(null)} title={detailAdjustment?.productName || t('adjustments.title')}>
+        {detailAdjustment && <dl className="grid gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+          <div><dt className="text-xs text-zinc-500">{t('adjustments.currentQty')}</dt><dd className="font-medium">{formatStockQuantity(detailAdjustment.currentQuantity, detailAdjustment.productUnit, detailAdjustment.productAltUnit, detailAdjustment.productConversionRate, t)}</dd></div>
+          <div><dt className="text-xs text-zinc-500">{t('adjustments.requestedChange')}</dt><dd className="font-semibold">{detailAdjustment.requestedChange > 0 ? '+' : '-'}{formatStockQuantity(Math.abs(detailAdjustment.requestedChange), detailAdjustment.productUnit, detailAdjustment.productAltUnit, detailAdjustment.productConversionRate, t)}</dd></div>
+          <div><dt className="text-xs text-zinc-500">{t('products.description')}</dt><dd className="whitespace-pre-wrap">{detailAdjustment.reason || '—'}</dd></div>
+          <div><dt className="text-xs text-zinc-500">{t('adjustments.submittedBy')}</dt><dd>{detailAdjustment.submittedByName || 'Staff'}</dd></div>
+          <div><dt className="text-xs text-zinc-500">{t('common.status')}</dt><dd>{t(`adjustments.statuses.${detailAdjustment.status}`)}</dd></div>
+          <div><dt className="text-xs text-zinc-500">{t('common.date')}</dt><dd>{formatDate(detailAdjustment.createdAt)}</dd></div>
+          {detailAdjustment.reviewNotes && <div><dt className="text-xs text-zinc-500">{t('adjustments.reviewedBy')}</dt><dd>{detailAdjustment.reviewedByName || '—'} · {detailAdjustment.reviewNotes}</dd></div>}
+        </dl>}
+      </Modal>
 
       {/* Request Modal */}
       <Modal
@@ -210,7 +186,11 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
             required
             options={productOptions}
             value={productId || productList[0]?.id || ''}
-            onChange={(e) => setProductId(e.target.value)}
+            onChange={(e) => {
+              const product = productList.find((p: any) => p.id === e.target.value)
+              setProductId(e.target.value)
+              setSelectedUnit(product?.unit || '')
+            }}
           />
 
           {selectedProd && (
@@ -218,19 +198,33 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
               <span>{t('adjustments.currentQty')}: <b>{formatStockQuantity(selectedProd.physicalStock, selectedProd.unit, selectedProd.altUnit, selectedProd.conversionRate, t)}</b></span>
               <span>
                 {t('adjustments.resultingQty')}:{' '}
-                <b>{formatStockQuantity(Math.max(0, selectedProd.physicalStock + (Number(requestedChange) || 0)), selectedProd.unit, selectedProd.altUnit, selectedProd.conversionRate, t)}</b>
+                <b>{formatStockQuantity(Math.max(0, selectedProd.physicalStock + requestedChangeInStockUnits), selectedProd.unit, selectedProd.altUnit, selectedProd.conversionRate, t)}</b>
               </span>
             </div>
           )}
 
-          <Input
-            label={t('adjustments.requestedChange')}
-            type="number"
-            required
-            placeholder="e.g. -2 for damage, or +5 for found stock"
-            value={requestedChange}
-            onChange={(e) => setRequestedChange(e.target.value)}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label={t('adjustments.requestedChange')}
+              type="number"
+              required
+              placeholder="e.g. -2 for damage, or +5 for found stock"
+              value={requestedChange}
+              onChange={(e) => setRequestedChange(e.target.value)}
+            />
+            <Select
+              label={t('stockIn.unitSelection')}
+              required
+              options={unitOptions}
+              value={currentUnit}
+              onChange={(e) => setSelectedUnit(e.target.value)}
+            />
+          </div>
+          {hasConversion && (
+            <p className="text-[11px] text-zinc-500">
+              {t('adjustments.requestedChange')}: {requestedChange} {formatUnitLabel(currentUnit, t)} = {requestedChangeInStockUnits} {formatUnitLabel(minorUnit, t)}
+            </p>
+          )}
 
           <Input
             label={t('products.description')}

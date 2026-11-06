@@ -108,6 +108,7 @@ export interface CustomerRecord {
   recordedByUserId: string
   createdAt: string
   updatedAt: string
+  stockReserved?: boolean
 }
 
 export interface CustomerItem {
@@ -157,6 +158,9 @@ export interface AdjustmentRequest {
   createdAt: string
   reviewedAt: string
   productName?: string
+  productUnit?: string
+  productAltUnit?: string
+  productConversionRate?: number
   submittedByName?: string
   reviewedByName?: string
 }

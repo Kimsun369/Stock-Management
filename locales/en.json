@@ -303,6 +303,7 @@
     "title": "Purchase Cost Tracking",
     "subtitle": "Track historical purchase costs, unit prices, and currencies",
     "product": "Product",
+    "supplier": "Supplier",
     "quantity": "Quantity",
     "unitCost": "Unit Cost",
     "totalAmount": "Total Amount",

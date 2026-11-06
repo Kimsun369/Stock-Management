@@ -33,7 +33,7 @@ export const SHEET_HEADERS: Record<SheetName, string[]> = {
   Suppliers: ['id', 'name', 'nameKm', 'contactPerson', 'phone', 'email', 'address', 'notes', 'active', 'createdAt', 'updatedAt'],
   Products: ['id', 'sku', 'name', 'nameKm', 'categoryId', 'brand', 'unit', 'purchaseCost', 'physicalStock', 'reservedStock', 'minStock', 'defaultSupplierId', 'description', 'descriptionKm', 'active', 'createdAt', 'updatedAt', 'altUnit', 'conversionRate'],
   StockTransactions: ['id', 'productId', 'type', 'quantity', 'previousBalance', 'resultingBalance', 'unitCost', 'currency', 'reference', 'reason', 'notes', 'recordedByUserId', 'createdAt', 'enteredQuantity', 'enteredUnit'],
-  CustomerRecords: ['id', 'recordNumber', 'customerName', 'customerPhone', 'normalizedPhone', 'status', 'storageLocation', 'notes', 'recordedByUserId', 'createdAt', 'updatedAt'],
+  CustomerRecords: ['id', 'recordNumber', 'customerName', 'customerPhone', 'normalizedPhone', 'status', 'storageLocation', 'notes', 'recordedByUserId', 'createdAt', 'updatedAt', 'stockReserved'],
   CustomerItems: ['id', 'recordId', 'productId', 'productName', 'originalQuantity', 'collectedQuantity', 'remainingQuantity', 'unit', 'createdAt', 'updatedAt'],
   CollectionTransactions: ['id', 'recordId', 'itemId', 'productId', 'quantityCollected', 'staffUserId', 'notes', 'createdAt'],
   AdjustmentRequests: ['id', 'productId', 'currentQuantity', 'requestedChange', 'reason', 'notes', 'status', 'submittedByUserId', 'reviewedByUserId', 'reviewNotes', 'createdAt', 'reviewedAt'],
@@ -300,6 +300,37 @@ export async function updateRowById(
   const headers = SHEET_HEADERS[sheetName]
   const values = headers.map((h) => updatedRow[h] ?? '')
   await updateRow(sheetName, idx + 2, values)
+}
+
+export async function deleteRowById(sheetName: SheetName, id: string): Promise<void> {
+  const rows = await getAllRows(sheetName)
+  const idx = rows.findIndex((row) => row.id === id)
+  if (idx === -1) throw new Error(`Row with id ${id} not found in ${sheetName}`)
+
+  if (!isGoogleSheetsConfigured()) {
+    writeLocalSheet(sheetName, rows.filter((row) => row.id !== id))
+    invalidateCache(sheetName)
+    return
+  }
+
+  const sheets = getSheetsClient()
+  const spreadsheetId = getSpreadsheetId()
+  const metadata = await withRetry(() => sheets.spreadsheets.get({ spreadsheetId }))
+  const sheet = metadata.data.sheets?.find((item) => item.properties?.title === sheetName)
+  const sheetId = sheet?.properties?.sheetId
+  if (sheetId === undefined) throw new Error(`Sheet ${sheetName} not found`)
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: idx + 1, endIndex: idx + 2 },
+        },
+      }],
+    },
+  })
+  invalidateCache(sheetName)
 }
 
 /**

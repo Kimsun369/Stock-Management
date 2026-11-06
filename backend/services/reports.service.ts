@@ -2,6 +2,7 @@ import { getAllRows, SHEETS } from '@/backend/sheets'
 import { getStockLedger } from '@/backend/services/inventory.service'
 import { getProducts } from '@/backend/services/products.service'
 import { getCustomerRecords } from '@/backend/services/leftovers.service'
+import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 
 export async function getReportData(params: {
   type: 'stock' | 'movements' | 'purchases' | 'leftovers' | 'staff'
@@ -49,23 +50,34 @@ export async function getReportData(params: {
   }
 
   if (type === 'purchases') {
-    const [purRows, prodRows, supRows] = await Promise.all([
+    const [purRows, prodRows, supRows, categoryRows] = await Promise.all([
       getAllRows(SHEETS.PurchaseRecords),
       getAllRows(SHEETS.Products),
       getAllRows(SHEETS.Suppliers),
+      getAllRows(SHEETS.Categories),
     ])
-    const prodMap = new Map(prodRows.map((p) => [p.id, p]))
+    const categoryMap = new Map(categoryRows.map((c) => [c.id, `${c.name || ''} ${c.nameKm || ''}`]))
+    const prodMap = new Map(prodRows.map((p) => [p.id, normalizeUnitPair(p, categoryMap.get(p.categoryId) || '')]))
     const supMap = new Map(supRows.map((s) => [s.id, s.name]))
 
     let list = purRows.map((p) => {
       const prod = prodMap.get(p.productId)
+      const rate = Number(prod?.conversionRate) > 1 ? Number(prod?.conversionRate) : 1
+      const packageQuantity = (Number(p.quantity) || 0) / rate
+      const recordedTotal = Number(p.totalAmount) || 0
+      const configuredPackageCost = prod ? configuredPurchaseCost(prod, prod) : 0
+      const configuredTotal = Number((packageQuantity * configuredPackageCost).toFixed(2))
+      const centTolerance = Math.max(packageQuantity, 1) * 0.01
+      const matchesConfiguredPrice = configuredPackageCost > 0 &&
+        Math.abs(Number(recordedTotal.toFixed(2)) - configuredTotal) <= centTolerance + 0.000001
       return {
         date: (p.purchaseDate || p.createdAt).slice(0, 10),
         product: prod?.name || 'Product',
         supplier: supMap.get(p.supplierId) || 'Supplier',
-        quantity: Number(p.quantity) || 0,
-        unitCost: Number(p.unitCost) || 0,
-        totalAmount: Number(p.totalAmount) || 0,
+        quantity: packageQuantity,
+        unit: prod?.unit || '',
+        unitCost: matchesConfiguredPrice ? configuredPackageCost : (Number(p.unitCost) || 0) * rate,
+        totalAmount: matchesConfiguredPrice ? configuredTotal : recordedTotal,
         currency: p.currency || 'USD',
         invoiceNumber: p.invoiceNumber || '—',
       }

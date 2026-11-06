@@ -168,19 +168,19 @@ export function StockOutView() {
                 <div>
                   <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('products.physicalStock')}</span>
                   <span className="font-bold text-sm">
-                    {formatNumber(selectedProduct.physicalStock)} {getUnitText(baseUnit, t)}
+                    {formatStockQuantity(selectedProduct.physicalStock, selectedProduct.unit, selectedProduct.altUnit, selectedProduct.conversionRate, t)}
                   </span>
                 </div>
                 <div>
                   <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('products.reservedStock')}</span>
                   <span className="font-bold text-sm text-amber-600">
-                    {formatNumber(selectedProduct.reservedStock)} {getUnitText(baseUnit, t)}
+                    {formatStockQuantity(selectedProduct.reservedStock, selectedProduct.unit, selectedProduct.altUnit, selectedProduct.conversionRate, t)}
                   </span>
                 </div>
                 <div>
                   <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('dashboard.availableStock')}</span>
                   <span className="font-bold text-sm text-amber-600 dark:text-amber-400">
-                    {formatNumber(selectedProduct.availableStock)} {getUnitText(baseUnit, t)}
+                    {formatStockQuantity(selectedProduct.availableStock, selectedProduct.unit, selectedProduct.altUnit, selectedProduct.conversionRate, t)}
                   </span>
                 </div>
               </div>

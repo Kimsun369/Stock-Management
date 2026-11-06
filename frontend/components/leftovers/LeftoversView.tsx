@@ -214,7 +214,14 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
                     <td className="px-4 py-3 font-mono text-gray-600">{r.phoneDisplay}</td>
                     <td className="px-4 py-3 text-gray-500">{r.storageLocation || 'Main Storage'}</td>
                     <td className="px-3 py-3 text-center font-bold text-gray-800">
-                      {r.totalRemainingQty} <span className="text-[10px] text-gray-400 font-normal">units</span>
+                      <div className="flex flex-col items-center gap-0.5">
+                        {r.items.filter((item) => item.remainingQuantity > 0).map((item) => (
+                          <span key={item.id}>
+                            {item.remainingQuantity} {formatUnitLabel(item.unit, t)}
+                          </span>
+                        ))}
+                        {!r.items.some((item) => item.remainingQuantity > 0) && <span>0</span>}
+                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <Badge

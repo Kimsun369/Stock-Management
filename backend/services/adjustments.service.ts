@@ -1,20 +1,26 @@
 import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
 import { AdjustmentRequest, AdjustmentStatus } from '@/backend/types'
+import { normalizeUnitPair } from '@/backend/unit-config'
 
 export async function getAdjustments(status?: string): Promise<AdjustmentRequest[]> {
-  const [adjRows, prodRows, userRows] = await Promise.all([
+  const [adjRows, prodRows, userRows, categoryRows] = await Promise.all([
     getAllRows(SHEETS.AdjustmentRequests),
     getAllRows(SHEETS.Products),
     getAllRows(SHEETS.Users),
+    getAllRows(SHEETS.Categories),
   ])
 
-  const prodMap = new Map(prodRows.map((p) => [p.id, p.name]))
+  const categoryMap = new Map(categoryRows.map((c) => [c.id, `${c.name || ''} ${c.nameKm || ''}`]))
+  const prodMap = new Map(prodRows.map((p) => [p.id, normalizeUnitPair(p, categoryMap.get(p.categoryId) || '')]))
   const userMap = new Map(userRows.map((u) => [u.id, u.name]))
 
   let list: AdjustmentRequest[] = adjRows.map((row) => ({
     id: row.id,
     productId: row.productId,
-    productName: prodMap.get(row.productId) || 'Unknown Product',
+    productName: prodMap.get(row.productId)?.name || 'Unknown Product',
+    productUnit: prodMap.get(row.productId)?.unit || '',
+    productAltUnit: prodMap.get(row.productId)?.altUnit || '',
+    productConversionRate: Number(prodMap.get(row.productId)?.conversionRate) || 1,
     currentQuantity: Number(row.currentQuantity) || 0,
     requestedChange: Number(row.requestedChange) || 0,
     reason: row.reason || '',
@@ -55,12 +61,33 @@ export async function requestAdjustment(params: {
   if (!product) throw new Error('PRODUCT_NOT_FOUND')
 
   const currentQty = Number(product.physicalStock) || 0
-  if (currentQty + params.requestedChange < 0) {
+  const resultingBalance = currentQty + params.requestedChange
+  if (resultingBalance < 0) {
     throw new Error('Adjustment cannot result in negative inventory')
   }
 
   const id = generateId()
   const now = new Date().toISOString()
+
+  await updateRowById(SHEETS.Products, product.id, {
+    physicalStock: String(resultingBalance),
+  })
+
+  await appendRow(SHEETS.StockTransactions, [
+    generateId(),
+    product.id,
+    'ADJUSTMENT',
+    String(Math.abs(params.requestedChange)),
+    String(currentQty),
+    String(resultingBalance),
+    String((Number(product.purchaseCost) || 0) / (Number(product.conversionRate) > 1 ? Number(product.conversionRate) : 1)),
+    'USD',
+    `ADJ-${id.slice(-6)}`,
+    `Count Correction: ${params.reason}`,
+    params.notes || '',
+    params.userId,
+    now,
+  ])
 
   await appendRow(SHEETS.AdjustmentRequests, [
     id,
@@ -69,21 +96,21 @@ export async function requestAdjustment(params: {
     String(params.requestedChange),
     params.reason,
     params.notes || '',
-    'PENDING',
+    'APPROVED',
     params.userId,
-    '', // reviewedByUserId
-    '', // reviewNotes
+    params.userId, // Applied immediately; no admin approval needed.
+    'Applied immediately by staff',
     now,
-    '', // reviewedAt
+    now,
   ])
 
   await appendAuditLog({
     actorId: params.userId,
     actorName: params.userName,
-    action: 'ADJUSTMENT_SUBMITTED',
+    action: 'ADJUSTMENT_APPLIED',
     entityType: 'StockAdjustmentRequest',
     entityId: id,
-    details: `Submitted adjustment of ${params.requestedChange > 0 ? '+' : ''}${params.requestedChange} for ${product.name} (Reason: ${params.reason})`,
+    details: `Applied adjustment of ${params.requestedChange > 0 ? '+' : ''}${params.requestedChange} for ${product.name} (${currentQty} -> ${resultingBalance}; Reason: ${params.reason})`,
   })
 
   return {
@@ -94,11 +121,11 @@ export async function requestAdjustment(params: {
     requestedChange: params.requestedChange,
     reason: params.reason,
     notes: params.notes || '',
-    status: 'PENDING',
+    status: 'APPROVED',
     submittedByUserId: params.userId,
     submittedByName: params.userName,
-    reviewedByUserId: '',
-    reviewNotes: '',
+    reviewedByUserId: params.userId,
+    reviewNotes: 'Applied immediately by staff',
     createdAt: now,
     reviewedAt: '',
   }

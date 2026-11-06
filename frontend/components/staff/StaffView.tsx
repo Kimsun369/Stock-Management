@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Plus, UserPlus, Key, Shield, User } from 'lucide-react'
+import { Plus, Shield, User, Eye, Pencil, Trash2 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { User as UserType } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
@@ -16,220 +16,138 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 export function StaffView() {
   const { t, formatDate } = useI18n()
   const { data: staff, isLoading, mutate } = useSWR<UserType[]>('/api/staff', fetcher)
-
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserType | null>(null)
+  const [detailUser, setDetailUser] = useState<UserType | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('StaffPass123!')
+  const [password, setPassword] = useState('')
   const [role, setRole] = useState<'ADMIN' | 'STAFF'>('STAFF')
   const [isSaving, setIsSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleOpenAdd = () => {
-    setName('')
-    setEmail('')
-    setPassword('StaffPass123!')
-    setRole('STAFF')
-    setErrorMsg(null)
-    setIsModalOpen(true)
+  const openAdd = () => {
+    setEditingUser(null); setName(''); setEmail(''); setPassword(''); setRole('STAFF')
+    setErrorMsg(null); setIsModalOpen(true)
   }
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSaving(true)
-    setErrorMsg(null)
-
-    try {
-      const res = await fetch('/api/staff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to create user')
-
-      setIsModalOpen(false)
-      mutate()
-    } catch (err: any) {
-      setErrorMsg(err.message === 'DUPLICATE_EMAIL' ? 'An account with this email already exists' : err.message)
-    } finally {
-      setIsSaving(false)
-    }
+  const openEdit = (user: UserType) => {
+    setEditingUser(user); setName(user.name); setEmail(user.email); setPassword(''); setRole(user.role)
+    setErrorMsg(null); setIsModalOpen(true)
   }
 
-  const handleToggleActive = async (u: UserType) => {
-    const actionName = u.active ? 'deactivate' : 'activate'
-    if (!window.confirm(`Are you sure you want to ${actionName} ${u.name}?`)) return
-
+  const saveUser = async (event: React.FormEvent) => {
+    event.preventDefault(); setIsSaving(true); setErrorMsg(null)
     try {
-      await fetch(`/api/staff/${u.id}`, {
-        method: 'PUT',
+      const editing = Boolean(editingUser)
+      const response = await fetch(editing ? `/api/staff/${editingUser!.id}` : '/api/staff', {
+        method: editing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active: !u.active }),
+        body: JSON.stringify({ name, email, role, ...(password ? { password } : {}) }),
       })
-      mutate()
-    } catch {
-      alert('Error updating user')
-    }
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not save account')
+      setIsModalOpen(false); await mutate()
+    } catch (error: any) {
+      setErrorMsg(error.message === 'DUPLICATE_EMAIL' ? 'An account with this email already exists' : error.message)
+    } finally { setIsSaving(false) }
   }
 
-  const handleResetPassword = async (u: UserType) => {
-    const newPass = window.prompt(`Enter new password for ${u.name}:`, 'NewPassword123!')
-    if (!newPass) return
+  const toggleActive = async (user: UserType) => {
+    const response = await fetch(`/api/staff/${user.id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !user.active }),
+    })
+    const result = await response.json()
+    if (!response.ok) { alert(result.error || 'Could not update account'); return }
+    await mutate()
+  }
 
-    try {
-      await fetch(`/api/staff/${u.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPass }),
-      })
-      alert('Password updated successfully')
-    } catch {
-      alert('Error resetting password')
-    }
+  const deleteUser = async (user: UserType) => {
+    if (!window.confirm(`Delete ${user.name} (${user.email})? This cannot be undone.`)) return
+    const response = await fetch(`/api/staff/${user.id}`, { method: 'DELETE' })
+    const result = await response.json()
+    if (!response.ok) { alert(result.error || 'Could not delete account'); return }
+    setDetailUser(null); await mutate()
   }
 
   const staffList = Array.isArray(staff) ? staff : []
+  const roleOptions = [
+    { value: 'STAFF', label: t('staff.roles.STAFF') },
+    { value: 'ADMIN', label: t('staff.roles.ADMIN') },
+  ]
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{t('staff.title')}</h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{t('staff.subtitle')}</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t('staff.subtitle')}</p>
         </div>
-        <Button onClick={handleOpenAdd} variant="primary" size="sm" className="w-full sm:w-auto justify-center">
-          <Plus className="w-4 h-4" />
-          <span>{t('staff.addNew')}</span>
-        </Button>
+        <Button onClick={openAdd} variant="primary" size="sm"><Plus className="w-4 h-4" /><span>{t('staff.addNew')}</span></Button>
       </div>
 
-      <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[650px]">
-          <thead className="bg-[#F8FAFC] text-gray-500 font-semibold border-b">
-            <tr>
-              <th className="px-5 py-3">{t('staff.name')}</th>
-              <th className="px-4 py-3">{t('staff.email')}</th>
-              <th className="px-3 py-3">{t('staff.role')}</th>
-              <th className="px-3 py-3">{t('staff.status')}</th>
-              <th className="px-4 py-3">{t('common.date')}</th>
-              <th className="px-4 py-3 text-right">{t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-400">
-                  {t('common.loading')}
-                </td>
-              </tr>
-            ) : staffList.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-400">
-                  {t('common.noRecords')}
-                </td>
-              </tr>
-            ) : (
-              staffList.map((u) => (
-                <tr key={u.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                  <td className="px-5 py-3 font-semibold text-gray-900">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-full bg-blue-100 text-blue-700">
-                        {u.role === 'ADMIN' ? <Shield className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-                      </div>
-                      <span>{u.name}</span>
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xs dark:border-zinc-800 dark:bg-[#121216]">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-xs">
+            <thead className="border-b bg-[#F8FAFC] font-semibold text-gray-500"><tr>
+              <th className="px-5 py-3">{t('staff.name')}</th><th className="px-4 py-3">{t('staff.email')}</th>
+              <th className="px-3 py-3">{t('staff.role')}</th><th className="px-3 py-3">{t('staff.status')}</th>
+              <th className="px-4 py-3">{t('common.date')}</th><th className="px-4 py-3 text-right">{t('common.actions')}</th>
+            </tr></thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {isLoading ? <tr><td colSpan={6} className="p-8 text-center text-gray-400">{t('common.loading')}</td></tr>
+                : staffList.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-gray-400">{t('common.noRecords')}</td></tr>
+                : staffList.map((user) => <tr key={user.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
+                  <td className="px-5 py-3 font-semibold text-gray-900 dark:text-zinc-100"><span className="mr-2 inline-flex rounded-full bg-blue-100 p-1.5 text-blue-700">{user.role === 'ADMIN' ? <Shield className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}</span>{user.name}</td>
+                  <td className="px-4 py-3 font-mono text-gray-600 dark:text-zinc-300">{user.email}</td>
+                  <td className="px-3 py-3"><Badge variant={user.role === 'ADMIN' ? 'info' : 'neutral'}>{user.role === 'ADMIN' ? t('auth.roleAdmin') : t('auth.roleStaff')}</Badge></td>
+                  <td className="px-3 py-3"><Badge variant={user.active ? 'success' : 'danger'}>{user.active ? t('common.active') : t('common.inactive')}</Badge></td>
+                  <td className="whitespace-nowrap px-4 py-3 text-gray-400">{formatDate(user.createdAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <div className="inline-flex items-center gap-1">
+                      <Button variant="outline" size="sm" onClick={() => setDetailUser(user)} title={t('common.view')}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => openEdit(user)} title={t('common.edit')}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => toggleActive(user)}>{user.active ? t('common.inactive') : t('common.active')}</Button>
+                      <Button variant="danger" size="sm" onClick={() => deleteUser(user)} title={t('common.delete')}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 font-mono">{u.email}</td>
-                  <td className="px-3 py-3">
-                    <Badge variant={u.role === 'ADMIN' ? 'info' : 'neutral'}>
-                      {u.role === 'ADMIN' ? t('auth.roleAdmin') : t('auth.roleStaff')}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-3">
-                    <Badge variant={u.active ? 'success' : 'danger'}>
-                      {u.active ? t('common.active') : t('common.inactive')}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(u.createdAt)}</td>
-                  <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                    <button
-                      onClick={() => handleResetPassword(u)}
-                      className="p-1 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                      title={t('staff.resetPassword')}
-                    >
-                      <Key className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(u)}
-                      className="text-[11px] font-semibold text-gray-500 hover:text-red-600"
-                    >
-                      {u.active ? t('common.inactive') : t('common.active')}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                </tr>)}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('staff.addNew')}>
-        <form onSubmit={handleSave} className="space-y-4">
-          {errorMsg && (
-            <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg border border-red-200">
-              {errorMsg}
-            </div>
-          )}
-
-          <Input
-            label={t('staff.name')}
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Chan Sokha (ចាន់ សុខា)"
-          />
-
-          <Input
-            label={t('staff.email')}
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="staff@karaokestock.com"
-          />
-
-          <Input
-            label={t('auth.password')}
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <Select
-            label={t('staff.role')}
-            options={[
-              { value: 'STAFF', label: t('staff.roles.STAFF') },
-              { value: 'ADMIN', label: t('staff.roles.ADMIN') },
-            ]}
-            value={role}
-            onChange={(e) => setRole(e.target.value as any)}
-          />
-
-          <div className="flex justify-end gap-2 pt-3 border-t">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>
-              {t('common.save')}
-            </Button>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingUser ? t('staff.editUser') : t('staff.addNew')}>
+        <form onSubmit={saveUser} className="space-y-4">
+          {errorMsg && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-600">{errorMsg}</div>}
+          <Input label={t('staff.name')} required value={name} onChange={(event) => setName(event.target.value)} />
+          <Input label={t('staff.email')} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+          <Input label={editingUser ? t('staff.newPasswordOptional') : t('auth.password')} type="password" required={!editingUser} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <Select label={t('staff.role')} options={roleOptions} value={role} onChange={(event) => setRole(event.target.value as 'ADMIN' | 'STAFF')} />
+          <div className="flex justify-end gap-2 border-t pt-3">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>{t('common.cancel')}</Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>{t('common.save')}</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={Boolean(detailUser)} onClose={() => setDetailUser(null)} title={detailUser?.name || t('staff.title')}>
+        {detailUser && <div className="space-y-5">
+          <dl className="grid gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+            <div><dt className="text-xs text-zinc-500">{t('staff.name')}</dt><dd className="font-semibold">{detailUser.name}</dd></div>
+            <div><dt className="text-xs text-zinc-500">{t('staff.email')}</dt><dd className="break-all font-medium">{detailUser.email}</dd></div>
+            <div><dt className="text-xs text-zinc-500">{t('staff.role')}</dt><dd>{detailUser.role === 'ADMIN' ? t('auth.roleAdmin') : t('auth.roleStaff')}</dd></div>
+            <div><dt className="text-xs text-zinc-500">{t('staff.status')}</dt><dd>{detailUser.active ? t('common.active') : t('common.inactive')}</dd></div>
+            <div><dt className="text-xs text-zinc-500">{t('staff.password')}</dt><dd>{t('staff.passwordSecurity')}</dd></div>
+            <div><dt className="text-xs text-zinc-500">{t('common.date')}</dt><dd>{formatDate(detailUser.createdAt)}</dd></div>
+          </dl>
+          <div className="flex justify-end gap-2">
+            <Button variant="danger" size="sm" onClick={() => deleteUser(detailUser)}><Trash2 className="h-4 w-4" />{t('common.delete')}</Button>
+            <Button variant="primary" size="sm" onClick={() => { const current = detailUser; setDetailUser(null); openEdit(current) }}><Pencil className="h-4 w-4" />{t('common.edit')}</Button>
+          </div>
+        </div>}
       </Modal>
     </div>
   )
 }
-

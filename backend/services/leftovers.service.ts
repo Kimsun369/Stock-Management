@@ -68,6 +68,7 @@ export async function getCustomerRecords(filters?: {
       recordedByName: userMap.get(r.recordedByUserId) || 'Staff',
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
+      stockReserved: r.stockReserved !== 'false',
       items,
       itemCount: items.length,
       totalRemainingQty: totalRemaining,
@@ -168,6 +169,7 @@ export async function getCustomerRecordById(id: string): Promise<CustomerRecordW
     recordedByName: userMap.get(recordRow.recordedByUserId) || 'Staff',
     createdAt: recordRow.createdAt,
     updatedAt: recordRow.updatedAt,
+    stockReserved: recordRow.stockReserved !== 'false',
     items,
     collections,
     itemCount: items.length,
@@ -198,7 +200,8 @@ export async function registerCustomerLeftover(params: {
   const productRows = await getAllRows(SHEETS.Products)
   const productMap = new Map(productRows.map((p) => [p.id, p]))
 
-  // 1. Validate all products and stock availability
+  // Validate products and quantities. Customer leftovers have already left inventory,
+  // so they must not be constrained by or reserved against current stock.
   for (const item of params.items) {
     if (item.quantity <= 0) {
       throw new Error('Item quantity must be greater than zero')
@@ -208,32 +211,17 @@ export async function registerCustomerLeftover(params: {
       throw new Error(`Product ${item.productId} not found or inactive`)
     }
 
-    const physical = Number(product.physicalStock) || 0
-    const reserved = Number(product.reservedStock) || 0
-    const available = physical - reserved
-
-    if (available < item.quantity) {
-      throw new Error(`INSUFFICIENT_STOCK: ${product.name} only has ${available} available to reserve`)
-    }
   }
 
   const now = new Date().toISOString()
   const recordId = generateId()
   const recordNumber = generateReceiptNumber()
 
-  // 2. Reserve stock for each product & create CustomerItem records
+  // 2. Record customer-held items without changing inventory balances.
   const createdItems: CustomerItem[] = []
 
   for (const item of params.items) {
     const product = productMap.get(item.productId)!
-    const currentReserved = Number(product.reservedStock) || 0
-    const newReserved = currentReserved + item.quantity
-
-    // Update product reserved stock
-    await updateRowById(SHEETS.Products, product.id, {
-      reservedStock: String(newReserved),
-    })
-
     const itemId = generateId()
     const itemUnit = item.unit || product.unit || 'can'
 
@@ -277,6 +265,7 @@ export async function registerCustomerLeftover(params: {
     params.userId,
     now,
     now,
+    'false', // Customer leftovers do not reserve inventory.
   ])
 
   // 4. Audit Log
@@ -302,6 +291,7 @@ export async function registerCustomerLeftover(params: {
     recordedByUserId: params.userId,
     createdAt: now,
     updatedAt: now,
+    stockReserved: false,
   }
 
   return { record: createdRecord, items: createdItems }
@@ -343,7 +333,6 @@ export async function recordCustomerCollection(params: {
   for (const col of params.collections) {
     if (col.quantity <= 0) continue
     const item = record.items.find((it) => it.id === col.itemId)!
-    const product = productMap.get(item.productId)
 
     const newCollected = item.collectedQuantity + col.quantity
     const newRemaining = item.remainingQuantity - col.quantity
@@ -355,8 +344,9 @@ export async function recordCustomerCollection(params: {
       updatedAt: now,
     })
 
-    // Release reservation on Products sheet (does NOT increase physical stock, it was already customer's!)
-    if (product) {
+    // Older records reserved stock. Release those reservations, but never change stock for new records.
+    const product = productMap.get(item.productId)
+    if (record.stockReserved && product) {
       const currentReserved = Number(product.reservedStock) || 0
       const newReserved = Math.max(0, currentReserved - col.quantity)
       await updateRowById(SHEETS.Products, product.id, {
@@ -431,7 +421,7 @@ export async function cancelCustomerLeftover(params: {
   for (const item of record.items) {
     if (item.remainingQuantity > 0) {
       const product = productMap.get(item.productId)
-      if (product) {
+      if (record.stockReserved && product) {
         const currentReserved = Number(product.reservedStock) || 0
         const newReserved = Math.max(0, currentReserved - item.remainingQuantity)
         await updateRowById(SHEETS.Products, product.id, {

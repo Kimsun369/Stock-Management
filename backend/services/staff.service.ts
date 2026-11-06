@@ -1,4 +1,4 @@
-import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
+import { getAllRows, appendRow, updateRowById, deleteRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
 import { User, Role } from '@/backend/types'
 import bcrypt from 'bcryptjs'
 
@@ -80,6 +80,7 @@ export async function updateStaffUser(
   id: string,
   data: {
     name?: string
+    email?: string
     role?: Role
     active?: boolean
     password?: string
@@ -90,10 +91,28 @@ export async function updateStaffUser(
   const users = await getAllRows(SHEETS.Users)
   const user = users.find((u) => u.id === id)
   if (!user) throw new Error('USER_NOT_FOUND')
+  const removesLastActiveAdmin = user.role === 'ADMIN' && user.active === 'true' &&
+    (data.active === false || data.role === 'STAFF') &&
+    users.filter((item) => item.role === 'ADMIN' && item.active === 'true').length <= 1
+  if (removesLastActiveAdmin) throw new Error('CANNOT_REMOVE_LAST_ADMIN')
 
   const updates: Record<string, string> = {}
-  if (data.name) updates.name = data.name.trim()
-  if (data.role) updates.role = data.role
+  if (data.name !== undefined) {
+    if (!data.name.trim()) throw new Error('Name is required')
+    updates.name = data.name.trim()
+  }
+  if (data.email !== undefined) {
+    if (!data.email.trim()) throw new Error('Email is required')
+    const email = data.email.trim().toLowerCase()
+    if (users.some((item) => item.id !== id && item.email.toLowerCase().trim() === email)) {
+      throw new Error('DUPLICATE_EMAIL')
+    }
+    updates.email = email
+  }
+  if (data.role !== undefined) {
+    if (data.role !== 'ADMIN' && data.role !== 'STAFF') throw new Error('INVALID_ROLE')
+    updates.role = data.role
+  }
   if (data.active !== undefined) updates.active = String(data.active)
   if (data.password) {
     updates.password = await bcrypt.hash(data.password, 10)
@@ -101,13 +120,14 @@ export async function updateStaffUser(
 
   await updateRowById(SHEETS.Users, id, updates)
 
+  const { password, ...safeData } = data
   await appendAuditLog({
     actorId: adminUserId,
     actorName: adminUserName,
     action: 'STAFF_UPDATED',
     entityType: 'User',
     entityId: id,
-    details: `Updated user "${user.name}" (${user.email}). Changes: ${JSON.stringify(data)}`,
+    details: `Updated user "${user.name}" (${user.email}). Changes: ${JSON.stringify({ ...safeData, passwordUpdated: Boolean(password) })}`,
   })
 }
 
@@ -123,8 +143,11 @@ export async function deleteStaffUser(
   // Cannot delete yourself
   if (id === adminUserId) throw new Error('CANNOT_DELETE_SELF')
 
-  // Deactivate instead of hard-delete for audit trail
-  await updateRowById(SHEETS.Users, id, { active: 'false' })
+  if (user.role === 'ADMIN' && user.active === 'true' && users.filter((item) => item.role === 'ADMIN' && item.active === 'true').length <= 1) {
+    throw new Error('CANNOT_DELETE_LAST_ADMIN')
+  }
+
+  await deleteRowById(SHEETS.Users, id)
 
   await appendAuditLog({
     actorId: adminUserId,
@@ -132,7 +155,7 @@ export async function deleteStaffUser(
     action: 'STAFF_DELETED',
     entityType: 'User',
     entityId: id,
-    details: `Deactivated user "${user.name}" (${user.email})`,
+    details: `Deleted user "${user.name}" (${user.email})`,
   })
 }
 

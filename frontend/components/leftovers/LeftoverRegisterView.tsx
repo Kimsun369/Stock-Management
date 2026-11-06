@@ -19,6 +19,10 @@ interface LeftoverItemInput {
   unit: string
 }
 
+function getUnitText(unit: string, t: (key: string) => string): string {
+  return formatUnitLabel(unit, t)
+}
+
 export function LeftoverRegisterView() {
   const { t, language } = useI18n()
   const router = useRouter()
@@ -29,7 +33,7 @@ export function LeftoverRegisterView() {
   const [storageLocation, setStorageLocation] = useState('Locker #14 (ទូផ្ញើលេខ ១៤)')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<LeftoverItemInput[]>([
-    { productId: '', quantity: 12, unit: 'can' },
+    { productId: '', quantity: 12, unit: '' },
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -38,7 +42,8 @@ export function LeftoverRegisterView() {
   const productList = products?.products || []
 
   const handleAddItem = () => {
-    setItems([...items, { productId: productList[0]?.id || '', quantity: 6, unit: 'can' }])
+    const product = productList.find((p: any) => p.id === (productList[0]?.id || ''))
+    setItems([...items, { productId: product?.id || '', quantity: 6, unit: product?.unit || '' }])
   }
 
   const handleRemoveItem = (index: number) => {
@@ -51,7 +56,9 @@ export function LeftoverRegisterView() {
     updated[index] = { ...updated[index], [field]: value }
     if (field === 'productId') {
       const p = productList.find((item: any) => item.id === value)
-      if (p) updated[index].unit = p.unit || 'can'
+      if (p) {
+        updated[index].unit = p.unit || 'unit'
+      }
     }
     setItems(updated)
   }
@@ -62,11 +69,17 @@ export function LeftoverRegisterView() {
     setErrorMsg(null)
 
     // Ensure first product has valid ID
-    const formattedItems = items.map((it) => ({
-      ...it,
-      productId: it.productId || productList[0]?.id,
-      quantity: Number(it.quantity),
-    }))
+    const formattedItems = items.map((it) => {
+      const product = productList.find((p: any) => p.id === (it.productId || productList[0]?.id))
+      const rate = Number(product?.conversionRate) > 1 ? Number(product.conversionRate) : 1
+      const hasConversion = Boolean(product?.altUnit && rate > 1)
+      const isAltUnit = hasConversion && it.unit.toLowerCase() === product.altUnit.toLowerCase()
+      return {
+        productId: it.productId || productList[0]?.id,
+        quantity: Number(it.quantity) * (hasConversion && !isAltUnit ? rate : 1),
+        unit: hasConversion && !isAltUnit ? product.altUnit : it.unit,
+      }
+    })
 
     try {
       const res = await fetch('/api/leftovers', {
@@ -97,7 +110,7 @@ export function LeftoverRegisterView() {
 
   const productOptions = productList.map((p: any) => ({
     value: p.id,
-    label: `${language === 'km' && p.nameKm ? p.nameKm : p.name} — Available: ${p.availableStock}`,
+    label: language === 'km' && p.nameKm ? p.nameKm : p.name,
   }))
 
   return (
@@ -184,8 +197,16 @@ export function LeftoverRegisterView() {
               const selectedProd = productList.find(
                 (p: any) => p.id === (item.productId || productList[0]?.id)
               )
-              const available = selectedProd ? selectedProd.availableStock : 0
-
+              const baseUnit = selectedProd?.unit || 'unit'
+              const altUnit = selectedProd?.altUnit || ''
+              const conversionRate = Number(selectedProd?.conversionRate) > 1 ? Number(selectedProd.conversionRate) : 1
+              const hasConversion = Boolean(altUnit && conversionRate > 1)
+              const unitOptions = selectedProd ? [
+                { value: baseUnit, label: getUnitText(baseUnit, t) },
+                ...(hasConversion ? [{ value: altUnit, label: `${getUnitText(altUnit, t)} (1 ${getUnitText(baseUnit, t)} = ${conversionRate} ${getUnitText(altUnit, t)})` }] : []),
+              ] : []
+              const isPackageSelected = hasConversion && (item.unit || baseUnit).toLowerCase() === baseUnit.toLowerCase()
+              const quantityInBase = Number(item.quantity) * (isPackageSelected ? conversionRate : 1)
               return (
                 <div key={idx} className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
@@ -201,8 +222,8 @@ export function LeftoverRegisterView() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                    <div className="sm:col-span-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                    <div className="sm:col-span-3">
                       <Select
                         label={t('stockIn.product')}
                         options={productOptions}
@@ -210,22 +231,29 @@ export function LeftoverRegisterView() {
                         onChange={(e) => handleItemChange(idx, 'productId', e.target.value)}
                       />
                     </div>
-                    <div>
+                    <div className="sm:col-span-1">
                       <Input
                         label={t('common.quantity')}
                         type="number"
                         min="1"
-                        max={available > 0 ? available : 1}
                         required
                         value={item.quantity}
                         onChange={(e) => handleItemChange(idx, 'quantity', Number(e.target.value))}
                       />
                     </div>
+                    <div className="sm:col-span-1">
+                      <Select
+                        label={t('stockIn.unitSelection')}
+                        options={unitOptions}
+                        value={item.unit || baseUnit}
+                        onChange={(e) => handleItemChange(idx, 'unit', e.target.value)}
+                      />
+                    </div>
                   </div>
 
-                  {selectedProd && (
-                    <p className="text-[10px] text-gray-500">
-                      Available to reserve: <b>{available} {formatUnitLabel(selectedProd.unit, t)}</b>
+                  {hasConversion && (
+                    <p className="text-[10px] text-amber-700">
+                      {item.quantity} {getUnitText(item.unit || baseUnit, t)} × {isPackageSelected ? conversionRate : 1} {getUnitText(altUnit, t)} = {quantityInBase} {getUnitText(altUnit, t)}
                     </p>
                   )}
                 </div>
