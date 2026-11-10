@@ -86,17 +86,17 @@ export function InventoryLedgerView() {
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs min-w-[640px]">
-          <thead className="bg-[#F8FAFC] text-gray-500 font-semibold border-b">
+          <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
               <th className="px-4 py-3">{language === 'km' ? 'ឈ្មោះផលិតផល' : 'Product Name'}</th>
               <th className="px-3 py-3">{language === 'km' ? 'ប្រភេទ' : 'Category'}</th>
-              <th className="px-4 py-3 text-right bg-blue-50/40 text-blue-900">
+              <th className="px-4 py-3 text-right bg-blue-50/40 text-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
                 {t('inventory.physical')}
               </th>
-              <th className="px-4 py-3 text-right bg-amber-50/40 text-amber-900">
+              <th className="px-4 py-3 text-right bg-amber-50/40 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
                 {t('inventory.reserved')}
               </th>
-              <th className="px-4 py-3 text-right bg-emerald-50/40 text-emerald-900">
+              <th className="px-4 py-3 text-right bg-emerald-50/40 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                 {t('inventory.available')}
               </th>
               <th className="px-4 py-3 text-center">{t('common.status')}</th>
@@ -120,17 +120,17 @@ export function InventoryLedgerView() {
                 const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
                 return (
                   <tr key={p.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                    <td className="px-4 py-3 font-semibold text-gray-900">{displayName}</td>
-                    <td className="px-3 py-3 text-gray-500">
+                    <td className="px-4 py-3 font-semibold text-gray-900 dark:text-zinc-100">{displayName}</td>
+                    <td className="px-3 py-3 text-gray-500 dark:text-zinc-400">
                       {language === 'km' && p.categoryNameKm ? p.categoryNameKm : p.categoryName}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-blue-900 bg-blue-50/20">
+                    <td className="px-4 py-3 text-right font-semibold text-blue-900 bg-blue-50/20 dark:bg-blue-950/20 dark:text-blue-300">
                       {formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-amber-800 bg-amber-50/20">
+                    <td className="px-4 py-3 text-right font-semibold text-amber-800 bg-amber-50/20 dark:bg-amber-950/20 dark:text-amber-300">
                       {formatStockQuantity(p.reservedStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-800 bg-emerald-50/20">
+                    <td className="px-4 py-3 text-right font-bold text-emerald-800 bg-emerald-50/20 dark:bg-emerald-950/20 dark:text-emerald-300">
                       {formatStockQuantity(p.availableStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
                     <td className="px-4 py-3 text-center">

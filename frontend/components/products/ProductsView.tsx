@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Plus, Search, Edit2, Trash2, Package, RefreshCw } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Package } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { ProductWithDetails } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
@@ -30,6 +30,23 @@ function getUnitText(u: string, t: (k: string) => string): string {
   return u
 }
 
+function getEditableMainUnit(unit: string): string {
+  const value = unit.trim().toLowerCase()
+  const aliases: Record<string, string> = {
+    'កំប៉ុង': 'can', 'ដប': 'bottle', 'ដុំ': 'piece', 'សន្លឹក': 'sheet',
+    'កេស': 'carton', 'កញ្ចប់': 'pack', 'case': 'carton', 'box': 'carton',
+    'package': 'pack',
+  }
+  return aliases[value] || value
+}
+
+function getEditablePackagingUnit(unit: string): string {
+  const value = unit.trim().toLowerCase()
+  if (['case', 'carton', 'box', 'កេស'].includes(value)) return 'កេស'
+  if (['pack', 'package', 'កញ្ចប់'].includes(value)) return 'កញ្ចប់'
+  return ''
+}
+
 export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STAFF' }) {
   const { t, language, formatNumber, formatCurrency } = useI18n()
   const [search, setSearch] = useState('')
@@ -45,7 +62,6 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
     name: '',
     nameKm: '',
     categoryId: '',
-    brand: '',
     unit: 'unit',
     altUnit: '',
     conversionRate: '1',
@@ -71,7 +87,6 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
       name: '',
       nameKm: '',
       categoryId: firstCat?.id || '',
-      brand: '',
       unit: 'unit',
       altUnit: '',
       conversionRate: '1',
@@ -85,14 +100,18 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
 
   const handleOpenEdit = (p: ProductWithDetails) => {
     setEditingProduct(p)
+    // API unit pairs are normalized as package -> inner unit; the edit form stores
+    // inner unit -> package so its conversion reads “1 package = N inner units”.
+    const hasPackaging = Boolean(p.altUnit && Number(p.conversionRate) > 1)
+    const editMainUnit = getEditableMainUnit(hasPackaging ? p.altUnit : p.unit)
+    const editPackagingUnit = hasPackaging ? getEditablePackagingUnit(p.unit) : ''
     setFormData({
       sku: p.sku,
       name: p.name,
       nameKm: p.nameKm || '',
       categoryId: p.categoryId,
-      brand: p.brand || '',
-      unit: p.unit || 'unit',
-      altUnit: p.altUnit || '',
+      unit: editMainUnit || 'unit',
+      altUnit: editPackagingUnit,
       conversionRate: String(p.conversionRate || '1'),
       purchaseCost: String(p.purchaseCost),
       minStock: String(p.minStock),
@@ -165,6 +184,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
   ]
 
   const unitOptions = [
+    { value: 'unit', label: t('products.units.unit') },
     { value: 'can', label: t('products.units.can') },
     { value: 'bottle', label: t('products.units.bottle') },
     { value: 'piece', label: t('products.units.piece') },
@@ -393,7 +413,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label={t('products.nameEn')}
               required
@@ -409,13 +429,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label={t('products.brand')}
-              value={formData.brand}
-              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              placeholder="Angkor"
-            />
+          <div>
             <Input
               label={t('products.minStock')}
               type="number"
@@ -426,13 +440,15 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
           </div>
 
           {/* Unit Conversion Configuration */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800">{t('products.unitConversionSettings')}</span>
-              <RefreshCw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900/50">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                <Package className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100">{t('products.unitConversionSettings')}</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <Select
                 label={t('products.mainUnit')}
                 options={unitOptions}
@@ -445,21 +461,23 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                 value={formData.altUnit}
                 onChange={(e) => setFormData({ ...formData, altUnit: e.target.value })}
               />
-              <Input
-                label={t('products.conversionRate')}
-                type="number"
-                min="1"
-                disabled={!formData.altUnit}
-                value={formData.conversionRate}
-                onChange={(e) => setFormData({ ...formData, conversionRate: e.target.value })}
-                placeholder="1"
-              />
+              <div className="sm:col-span-2">
+                <Input
+                  label={t('products.conversionRate')}
+                  type="number"
+                  min="1"
+                  disabled={!formData.altUnit}
+                  value={formData.conversionRate}
+                  onChange={(e) => setFormData({ ...formData, conversionRate: e.target.value })}
+                  placeholder="1"
+                />
+              </div>
             </div>
 
             {formData.altUnit && Number(formData.conversionRate) > 1 && (
-              <div className="p-2 bg-amber-400/10 dark:bg-amber-400/15/80 border border-amber-400/30 rounded-lg text-xs font-semibold text-blue-800 flex items-center justify-between">
-                <span>{t('products.conversionRule')}:</span>
-                <span className="font-bold">
+              <div className="mt-4 flex flex-col gap-1 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+                <span>{t('products.conversionRule')}</span>
+                <span className="font-semibold">
                   1 {getUnitText(formData.altUnit, t)} = {formData.conversionRate} {getUnitText(formData.unit, t)}
                 </span>
               </div>

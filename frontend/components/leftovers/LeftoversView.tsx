@@ -181,7 +181,7 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs min-w-[800px]">
-            <thead className="bg-[#F8FAFC] text-gray-500 font-semibold border-b">
+            <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
               <tr>
                 <th className="px-5 py-3">{t('customerLeftovers.receiptNumber')}</th>
                 <th className="px-4 py-3">{t('customerLeftovers.customerName')}</th>
@@ -210,10 +210,10 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
                 data.records.map((r: CustomerRecordWithItems) => (
                   <tr key={r.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
                     <td className="px-5 py-3 font-mono font-semibold text-blue-600">{r.recordNumber}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">{r.customerName}</td>
-                    <td className="px-4 py-3 font-mono text-gray-600">{r.phoneDisplay}</td>
-                    <td className="px-4 py-3 text-gray-500">{r.storageLocation || 'Main Storage'}</td>
-                    <td className="px-3 py-3 text-center font-bold text-gray-800">
+                    <td className="px-4 py-3 font-semibold text-gray-900 dark:text-zinc-100">{r.customerName}</td>
+                    <td className="px-4 py-3 font-mono text-gray-600 dark:text-zinc-300">{r.phoneDisplay}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-zinc-400">{r.storageLocation || 'Main Storage'}</td>
+                    <td className="px-3 py-3 text-center font-bold text-gray-800 dark:text-zinc-200">
                       <div className="flex flex-col items-center gap-0.5">
                         {r.items.filter((item) => item.remainingQuantity > 0).map((item) => (
                           <span key={item.id}>
@@ -242,7 +242,7 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
                     <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <button
                         onClick={() => handleOpenReceipt(r)}
-                        className="p-1 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                        className="p-1 rounded text-gray-500 dark:text-zinc-400 hover:text-blue-600 hover:bg-blue-50"
                         title={t('customerLeftovers.printReceipt')}
                       >
                         <Printer className="w-3.5 h-3.5" />
@@ -298,10 +298,10 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
 
             <div className="space-y-3">
               {collectRecord.items.map((it) => (
-                <div key={it.id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between gap-4">
+                <div key={it.id} className="p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-lg flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-semibold text-gray-900 text-xs">{it.productName}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
+                    <p className="font-semibold text-gray-900 dark:text-zinc-100 text-xs">{it.productName}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5">
                       {t('customerLeftovers.originalQty')}: {it.originalQuantity} | {t('customerLeftovers.remainingQty')}:{' '}
                       <b>{it.remainingQuantity} {formatUnitLabel(it.unit, t)}</b>
                     </p>

@@ -14,7 +14,7 @@ export function Providers({
 }) {
   return (
     <SessionProvider session={session}>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <I18nProvider>
           {children}
         </I18nProvider>

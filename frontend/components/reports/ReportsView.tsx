@@ -129,7 +129,7 @@ export function ReportsView() {
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs min-w-[650px]">
-            <thead className="bg-[#F8FAFC] text-gray-500 font-semibold border-b">
+            <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
               <tr>
                 {columns.map((col) => (
                   <th key={col} className="px-4 py-3 capitalize whitespace-nowrap">
@@ -155,7 +155,7 @@ export function ReportsView() {
                 items.map((row, idx) => (
                   <tr key={idx} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
                     {columns.map((col) => (
-                      <td key={col} className="px-4 py-3 text-gray-800 whitespace-nowrap">
+                      <td key={col} className="px-4 py-3 text-gray-800 dark:text-zinc-200 whitespace-nowrap">
                         {renderValue(col, row[col], row)}
                       </td>
                     ))}

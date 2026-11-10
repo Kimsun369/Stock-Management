@@ -2,12 +2,17 @@ import { getAllRows, appendRow, updateRowById, deleteRowById, appendAuditLog, ge
 import { User, Role } from '@/backend/types'
 import bcrypt from 'bcryptjs'
 
-export async function getStaffUsers(): Promise<Omit<User, 'password'>[]> {
+const SUPER_ADMIN_EMAIL = 'povmesa97@gmail.com'
+
+export type StaffUserSummary = Omit<User, 'password'> & { hasPassword: boolean }
+
+export async function getStaffUsers(): Promise<StaffUserSummary[]> {
   const rows = await getAllRows(SHEETS.Users)
   return rows.map((u) => ({
     id: u.id,
     name: u.name,
     email: u.email,
+    hasPassword: Boolean(u.password),
     role: u.role as Role,
     preferredLanguage: u.preferredLanguage || 'km',
     numeralSystem: u.numeralSystem || 'western',
@@ -91,6 +96,10 @@ export async function updateStaffUser(
   const users = await getAllRows(SHEETS.Users)
   const user = users.find((u) => u.id === id)
   if (!user) throw new Error('USER_NOT_FOUND')
+  if (user.email.toLowerCase().trim() === SUPER_ADMIN_EMAIL && (
+    (data.email !== undefined && data.email.toLowerCase().trim() !== SUPER_ADMIN_EMAIL) ||
+    data.role === 'STAFF' || data.active === false
+  )) throw new Error('CANNOT_CHANGE_MAIN_ADMIN')
   const removesLastActiveAdmin = user.role === 'ADMIN' && user.active === 'true' &&
     (data.active === false || data.role === 'STAFF') &&
     users.filter((item) => item.role === 'ADMIN' && item.active === 'true').length <= 1
@@ -139,6 +148,9 @@ export async function deleteStaffUser(
   const users = await getAllRows(SHEETS.Users)
   const user = users.find((u) => u.id === id)
   if (!user) throw new Error('USER_NOT_FOUND')
+
+  // The Google-verified owner account is the permanent system administrator.
+  if (user.email.toLowerCase().trim() === SUPER_ADMIN_EMAIL) throw new Error('CANNOT_DELETE_MAIN_ADMIN')
 
   // Cannot delete yourself
   if (id === adminUserId) throw new Error('CANNOT_DELETE_SELF')

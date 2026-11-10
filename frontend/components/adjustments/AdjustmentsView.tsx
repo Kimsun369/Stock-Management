@@ -100,7 +100,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs min-w-[760px]">
-          <thead className="bg-[#F8FAFC] text-gray-500 font-semibold border-b">
+          <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
               <th className="px-5 py-3">{t('adjustments.product')}</th>
               <th className="px-3 py-3 text-right">{t('adjustments.currentQty')}</th>
@@ -127,8 +127,8 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
             ) : (
               (adjustments || []).map((adj) => (
                 <tr key={adj.id} onClick={() => setDetailAdjustment(adj)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setDetailAdjustment(adj) }} tabIndex={0} role="button" aria-label={`${t('common.view')} ${adj.productName}`} className="cursor-pointer hover:bg-zinc-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 dark:hover:bg-zinc-800/40">
-                  <td className="px-5 py-3 font-semibold text-gray-900">{adj.productName}</td>
-                  <td className="px-3 py-3 text-right text-gray-600 font-mono">
+                  <td className="px-5 py-3 font-semibold text-gray-900 dark:text-zinc-100">{adj.productName}</td>
+                  <td className="px-3 py-3 text-right text-gray-600 dark:text-zinc-300 font-mono">
                     {formatStockQuantity(adj.currentQuantity, adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
                   </td>
                   <td className="px-3 py-3 text-right font-mono font-bold">
@@ -136,7 +136,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
                       {adj.requestedChange > 0 ? '+' : '-'}{formatStockQuantity(Math.abs(adj.requestedChange), adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{adj.reason}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-zinc-300">{adj.reason}</td>
                   <td className="px-3 py-3">
                     <Badge
                       variant={
@@ -146,7 +146,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
                       {t(`adjustments.statuses.${adj.status}`)}
                     </Badge>
                   </td>
-                  <td className="px-3 py-3 text-gray-600">{adj.submittedByName || 'Staff'}</td>
+                  <td className="px-3 py-3 text-gray-600 dark:text-zinc-300">{adj.submittedByName || 'Staff'}</td>
                   <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(adj.createdAt)}</td>
                 </tr>
               ))

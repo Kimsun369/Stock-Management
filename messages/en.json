@@ -94,8 +94,8 @@
     "roleAdmin": "Administrator",
     "roleStaff": "Staff",
     "appTaglineDescription": "Production-ready bilingual stock and customer leftover management for Cambodian karaoke venues.",
-    "accessDenied": "This Google account does not have access. Please switch to an authorized staff Gmail account or contact your manager.",
-    "switchGoogleAccount": "Switch / Choose Another Google Account",
+    "accessDenied": "The Google account you selected is not authorized. For admin access, use povmesa97@gmail.com or choose an authorized staff account.",
+    "switchGoogleAccount": "Switch to the correct Gmail account",
     "oauthError": "Failed to authenticate with Google. Please try again."
   },
   "dashboard": {
@@ -369,9 +369,9 @@
     }
   },
   "adjustments": {
-    "title": "Stock Adjustment Requests",
-    "subtitle": "Submit count corrections and review admin approvals",
-    "requestAdjustment": "Request Stock Adjustment",
+    "title": "Stock Adjustments",
+    "subtitle": "Apply stock count corrections immediately. Admins can view the full history.",
+    "requestAdjustment": "Adjust Stock",
     "product": "Product",
     "currentQty": "Current Physical Quantity",
     "requestedChange": "Requested Change (+ or -)",
@@ -385,7 +385,7 @@
     "reject": "Reject Request",
     "statuses": {
       "PENDING": "Pending Approval",
-      "APPROVED": "Approved & Applied",
+      "APPROVED": "Applied",
       "REJECTED": "Rejected"
     }
   },

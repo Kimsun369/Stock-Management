@@ -164,7 +164,7 @@ export function StockOutView() {
             />
 
             {selectedProduct && (
-              <div className="p-3.5 bg-amber-400/10 dark:bg-amber-400/15/70 rounded-lg text-xs text-blue-900 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="p-3.5 bg-amber-400/10 dark:bg-amber-950/40 rounded-lg text-xs text-zinc-700 dark:text-zinc-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('products.physicalStock')}</span>
                   <span className="font-bold text-sm">
@@ -239,8 +239,8 @@ export function StockOutView() {
             </div>
 
             <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 font-khmer">
-              {t('products.description')}<span className="text-rose-500 ml-0.5">*</span>
-              <textarea required rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30" />
+              {t('products.description')}
+              <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] px-3.5 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30" />
             </label>
 
             <Button type="submit" variant="primary" isLoading={isLoading} className="w-full">
@@ -251,11 +251,11 @@ export function StockOutView() {
         </div>
 
         {/* Recent Stock Out List */}
-        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-[#121216] p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col">
           <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3">{t('stockOut.recentStockOut')}</h2>
           <div className="flex-1 overflow-y-auto space-y-2">
             {(recentOut || []).map((item: any) => (
-              <button type="button" onClick={() => setDetailItem(item)} key={item.id} className="w-full text-left p-3 bg-gray-50 hover:bg-amber-50 rounded-lg text-xs space-y-1 border border-transparent hover:border-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+              <button type="button" onClick={() => setDetailItem(item)} key={item.id} className="w-full text-left p-3 bg-gray-50 dark:bg-zinc-800/50 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg text-xs space-y-1 border border-transparent hover:border-amber-200 dark:hover:border-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                 <div className="flex justify-between font-semibold text-zinc-800 dark:text-zinc-200">
                   <span className="truncate pr-2">{language === 'km' && item.productNameKm ? item.productNameKm : item.productName}</span>
                   <span className="text-amber-600 dark:text-amber-400 font-bold">-{formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>

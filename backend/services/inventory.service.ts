@@ -226,7 +226,7 @@ export async function recordStockOut(params: {
   productId: string
   quantity: number
   unit?: string
-  reason: string
+  reason?: string
   reference?: string
   notes?: string
   userId: string
@@ -270,6 +270,7 @@ export async function recordStockOut(params: {
   }
 
   const newPhysical = currentPhysical - baseQuantity
+  const reason = params.reason?.trim() || ''
   const now = new Date().toISOString()
   const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
 
@@ -290,7 +291,7 @@ export async function recordStockOut(params: {
     String(configuredCost / (altUnit && conversionRate > 1 ? conversionRate : 1)),
     'USD',
     params.reference || '',
-    params.reason,
+    reason,
     noteContent,
     params.userId,
     now,
@@ -305,7 +306,7 @@ export async function recordStockOut(params: {
     action: 'STOCK_OUT',
     entityType: 'Product',
     entityId: productRow.id,
-    details: `Dispensed ${unitDetail} of ${productRow.name} (${params.reason}). Stock: ${currentPhysical} -> ${newPhysical}`,
+    details: `Dispensed ${unitDetail} of ${productRow.name}${reason ? ` (${reason})` : ''}. Stock: ${currentPhysical} -> ${newPhysical}`,
   })
 
   const updatedProduct: Product = {
@@ -340,7 +341,7 @@ export async function recordStockOut(params: {
     unitCost: configuredCost / (altUnit && conversionRate > 1 ? conversionRate : 1),
     currency: 'USD',
     reference: params.reference || '',
-    reason: params.reason,
+    reason,
     notes: noteContent,
     recordedByUserId: params.userId,
     createdAt: now,

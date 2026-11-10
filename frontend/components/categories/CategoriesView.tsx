@@ -125,7 +125,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
       <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs min-w-[600px]">
-          <thead className="bg-[#F8FAFC] text-zinc-500 dark:text-zinc-400 font-semibold border-b">
+          <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
               <th className="px-5 py-3">{t('categories.title')}</th>
               <th className="px-4 py-3">{t('categories.description')}</th>

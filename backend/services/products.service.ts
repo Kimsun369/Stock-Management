@@ -1,6 +1,7 @@
 import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
 import { Product, ProductWithDetails } from '@/backend/types'
 import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
+import { beerCategoryIds, canonicalBeerCategoryId } from '@/backend/category-utils'
 
 export async function getProducts(filters?: {
   search?: string
@@ -16,6 +17,8 @@ export async function getProducts(filters?: {
   ])
 
   const catMap = new Map(categoryRows.map((c) => [c.id, c]))
+  const beerIds = beerCategoryIds(categoryRows)
+  const canonicalBeerId = canonicalBeerCategoryId(categoryRows)
   const supMap = new Map(supplierRows.map((s) => [s.id, s.name]))
 
   let list: ProductWithDetails[] = productRows.map((p) => {
@@ -30,7 +33,7 @@ export async function getProducts(filters?: {
       sku: p.sku,
       name: p.name,
       nameKm: p.nameKm || '',
-      categoryId: p.categoryId,
+      categoryId: beerIds.has(p.categoryId) ? canonicalBeerId || p.categoryId : p.categoryId,
       brand: p.brand || '',
       unit: units.unit || 'units',
       altUnit: units.altUnit || '',
@@ -46,8 +49,8 @@ export async function getProducts(filters?: {
       active: p.active === 'true',
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
-      categoryName: cat ? cat.name : '',
-      categoryNameKm: cat ? cat.nameKm : '',
+      categoryName: cat ? (beerIds.has(cat.id) ? 'Beer' : cat.name) : '',
+      categoryNameKm: cat ? (beerIds.has(cat.id) ? 'ស្រាបៀរ' : cat.nameKm) : '',
       supplierName: supMap.get(p.defaultSupplierId) || '',
     }
   })
@@ -57,7 +60,9 @@ export async function getProducts(filters?: {
 
   // Filter category
   if (filters?.categoryId && filters.categoryId !== 'ALL') {
-    list = list.filter((p) => p.categoryId === filters.categoryId)
+    list = beerIds.has(filters.categoryId)
+      ? list.filter((p) => beerIds.has(p.categoryId))
+      : list.filter((p) => p.categoryId === filters.categoryId)
   }
 
   // Filter stock status
@@ -105,6 +110,8 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
 
   const p = productRows.find((row) => row.id === id || row.sku === id)
   if (!p) return null
+  const beerIds = beerCategoryIds(categoryRows)
+  const canonicalBeerId = canonicalBeerCategoryId(categoryRows)
   const cat = categoryRows.find((c) => c.id === p.categoryId)
   const units = normalizeUnitPair(p, `${cat?.name || ''} ${cat?.nameKm || ''}`)
   const sup = supplierRows.find((s) => s.id === p.defaultSupplierId)
@@ -117,7 +124,7 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
     sku: p.sku,
     name: p.name,
     nameKm: p.nameKm || '',
-    categoryId: p.categoryId,
+    categoryId: beerIds.has(p.categoryId) ? canonicalBeerId || p.categoryId : p.categoryId,
     brand: p.brand || '',
     unit: units.unit || 'units',
     altUnit: units.altUnit || '',
@@ -133,8 +140,8 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
     active: p.active === 'true',
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
-    categoryName: cat?.name || '',
-    categoryNameKm: cat?.nameKm || '',
+    categoryName: cat ? (beerIds.has(cat.id) ? 'Beer' : cat.name) : '',
+    categoryNameKm: cat ? (beerIds.has(cat.id) ? 'ស្រាបៀរ' : cat.nameKm) : '',
     supplierName: sup?.name || '',
   }
 }

@@ -12,28 +12,46 @@ import { Badge } from '@/frontend/components/ui/Badge'
 import { Modal } from '@/frontend/components/ui/Modal'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
+type StaffUserSummary = Omit<UserType, 'password'> & { hasPassword: boolean }
 
 export function StaffView() {
   const { t, formatDate } = useI18n()
-  const { data: staff, isLoading, mutate } = useSWR<UserType[]>('/api/staff', fetcher)
+  const { data: staff, isLoading, mutate } = useSWR<StaffUserSummary[]>('/api/staff', fetcher)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<UserType | null>(null)
-  const [detailUser, setDetailUser] = useState<UserType | null>(null)
+  const [editingUser, setEditingUser] = useState<StaffUserSummary | null>(null)
+  const [detailUser, setDetailUser] = useState<StaffUserSummary | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<'ADMIN' | 'STAFF'>('STAFF')
   const [isSaving, setIsSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const friendlyError = (code: string) => {
+    const knownErrors: Record<string, string> = {
+      DUPLICATE_EMAIL: 'staff.errors.duplicateEmail',
+      USER_NOT_FOUND: 'staff.errors.notFound',
+      CANNOT_DELETE_SELF: 'staff.errors.cannotDeleteSelf',
+      CANNOT_DELETE_MAIN_ADMIN: 'staff.errors.cannotDeleteMainAdmin',
+      CANNOT_CHANGE_MAIN_ADMIN: 'staff.errors.cannotChangeMainAdmin',
+      CANNOT_DELETE_LAST_ADMIN: 'staff.errors.lastAdmin',
+      CANNOT_REMOVE_LAST_ADMIN: 'staff.errors.lastAdmin',
+      INVALID_ROLE: 'staff.errors.invalidRole',
+      UNAUTHORIZED: 'staff.errors.unauthorized',
+      FORBIDDEN: 'staff.errors.forbidden',
+    }
+    return t(knownErrors[code] || 'staff.errors.generic')
+  }
 
   const openAdd = () => {
     setEditingUser(null); setName(''); setEmail(''); setPassword(''); setRole('STAFF')
-    setErrorMsg(null); setIsModalOpen(true)
+    setErrorMsg(null); setNotice(null); setIsModalOpen(true)
   }
 
-  const openEdit = (user: UserType) => {
+  const openEdit = (user: StaffUserSummary) => {
     setEditingUser(user); setName(user.name); setEmail(user.email); setPassword(''); setRole(user.role)
-    setErrorMsg(null); setIsModalOpen(true)
+    setErrorMsg(null); setNotice(null); setIsModalOpen(true)
   }
 
   const saveUser = async (event: React.FormEvent) => {
@@ -47,28 +65,32 @@ export function StaffView() {
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || 'Could not save account')
-      setIsModalOpen(false); await mutate()
+      setIsModalOpen(false); setNotice(t(editing ? 'staff.messages.updated' : 'staff.messages.created')); await mutate()
     } catch (error: any) {
-      setErrorMsg(error.message === 'DUPLICATE_EMAIL' ? 'An account with this email already exists' : error.message)
+      setErrorMsg(friendlyError(error.message))
     } finally { setIsSaving(false) }
   }
 
-  const toggleActive = async (user: UserType) => {
-    const response = await fetch(`/api/staff/${user.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !user.active }),
-    })
-    const result = await response.json()
-    if (!response.ok) { alert(result.error || 'Could not update account'); return }
-    await mutate()
+  const toggleActive = async (user: StaffUserSummary) => {
+    try {
+      const response = await fetch(`/api/staff/${user.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !user.active }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
+      setNotice(t('staff.messages.updated')); await mutate()
+    } catch (error: any) { setNotice(friendlyError(error.message)) }
   }
 
-  const deleteUser = async (user: UserType) => {
-    if (!window.confirm(`Delete ${user.name} (${user.email})? This cannot be undone.`)) return
-    const response = await fetch(`/api/staff/${user.id}`, { method: 'DELETE' })
-    const result = await response.json()
-    if (!response.ok) { alert(result.error || 'Could not delete account'); return }
-    setDetailUser(null); await mutate()
+  const deleteUser = async (user: StaffUserSummary) => {
+    if (!window.confirm(t('staff.confirmDelete', { name: user.name, email: user.email }))) return
+    try {
+      const response = await fetch(`/api/staff/${user.id}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
+      setDetailUser(null); setNotice(t('staff.messages.deleted')); await mutate()
+    } catch (error: any) { setNotice(friendlyError(error.message)) }
   }
 
   const staffList = Array.isArray(staff) ? staff : []
@@ -87,10 +109,12 @@ export function StaffView() {
         <Button onClick={openAdd} variant="primary" size="sm"><Plus className="w-4 h-4" /><span>{t('staff.addNew')}</span></Button>
       </div>
 
+      {notice && <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">{notice}<button className="ml-3 underline" onClick={() => setNotice(null)}>{t('staff.dismiss')}</button></div>}
+
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xs dark:border-zinc-800 dark:bg-[#121216]">
         <div className="w-full overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-xs">
-            <thead className="border-b bg-[#F8FAFC] font-semibold text-gray-500"><tr>
+            <thead className="border-b bg-[#F8FAFC] dark:bg-[#18181D] font-semibold text-gray-500 dark:text-zinc-400"><tr>
               <th className="px-5 py-3">{t('staff.name')}</th><th className="px-4 py-3">{t('staff.email')}</th>
               <th className="px-3 py-3">{t('staff.role')}</th><th className="px-3 py-3">{t('staff.status')}</th>
               <th className="px-4 py-3">{t('common.date')}</th><th className="px-4 py-3 text-right">{t('common.actions')}</th>
@@ -108,8 +132,8 @@ export function StaffView() {
                     <div className="inline-flex items-center gap-1">
                       <Button variant="outline" size="sm" onClick={() => setDetailUser(user)} title={t('common.view')}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button variant="outline" size="sm" onClick={() => openEdit(user)} title={t('common.edit')}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => toggleActive(user)}>{user.active ? t('common.inactive') : t('common.active')}</Button>
-                      <Button variant="danger" size="sm" onClick={() => deleteUser(user)} title={t('common.delete')}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      {user.email.toLowerCase() !== 'povmesa97@gmail.com' && <Button variant="outline" size="sm" onClick={() => toggleActive(user)}>{user.active ? t('common.inactive') : t('common.active')}</Button>}
+                      {user.email.toLowerCase() !== 'povmesa97@gmail.com' && <Button variant="danger" size="sm" onClick={() => deleteUser(user)} title={t('common.delete')}><Trash2 className="h-3.5 w-3.5" /></Button>}
                     </div>
                   </td>
                 </tr>)}
@@ -122,9 +146,9 @@ export function StaffView() {
         <form onSubmit={saveUser} className="space-y-4">
           {errorMsg && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-600">{errorMsg}</div>}
           <Input label={t('staff.name')} required value={name} onChange={(event) => setName(event.target.value)} />
-          <Input label={t('staff.email')} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+          <Input label={t('staff.email')} type="email" required value={email} disabled={editingUser?.email.toLowerCase() === 'povmesa97@gmail.com'} onChange={(event) => setEmail(event.target.value)} />
           <Input label={editingUser ? t('staff.newPasswordOptional') : t('auth.password')} type="password" required={!editingUser} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          <Select label={t('staff.role')} options={roleOptions} value={role} onChange={(event) => setRole(event.target.value as 'ADMIN' | 'STAFF')} />
+          <Select label={t('staff.role')} options={roleOptions} value={role} disabled={editingUser?.email.toLowerCase() === 'povmesa97@gmail.com'} onChange={(event) => setRole(event.target.value as 'ADMIN' | 'STAFF')} />
           <div className="flex justify-end gap-2 border-t pt-3">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>{t('common.cancel')}</Button>
             <Button type="submit" variant="primary" size="sm" isLoading={isSaving}>{t('common.save')}</Button>
@@ -139,11 +163,11 @@ export function StaffView() {
             <div><dt className="text-xs text-zinc-500">{t('staff.email')}</dt><dd className="break-all font-medium">{detailUser.email}</dd></div>
             <div><dt className="text-xs text-zinc-500">{t('staff.role')}</dt><dd>{detailUser.role === 'ADMIN' ? t('auth.roleAdmin') : t('auth.roleStaff')}</dd></div>
             <div><dt className="text-xs text-zinc-500">{t('staff.status')}</dt><dd>{detailUser.active ? t('common.active') : t('common.inactive')}</dd></div>
-            <div><dt className="text-xs text-zinc-500">{t('staff.password')}</dt><dd>{t('staff.passwordSecurity')}</dd></div>
+            <div><dt className="text-xs text-zinc-500">{t('staff.password')}</dt><dd>{detailUser.hasPassword ? t('staff.passwordSet') : t('staff.googleSignIn')}</dd><p className="mt-1 text-xs text-zinc-500">{t('staff.passwordSecurity')}</p></div>
             <div><dt className="text-xs text-zinc-500">{t('common.date')}</dt><dd>{formatDate(detailUser.createdAt)}</dd></div>
           </dl>
           <div className="flex justify-end gap-2">
-            <Button variant="danger" size="sm" onClick={() => deleteUser(detailUser)}><Trash2 className="h-4 w-4" />{t('common.delete')}</Button>
+            {detailUser.email.toLowerCase() !== 'povmesa97@gmail.com' && <Button variant="danger" size="sm" onClick={() => deleteUser(detailUser)}><Trash2 className="h-4 w-4" />{t('common.delete')}</Button>}
             <Button variant="primary" size="sm" onClick={() => { const current = detailUser; setDetailUser(null); openEdit(current) }}><Pencil className="h-4 w-4" />{t('common.edit')}</Button>
           </div>
         </div>}

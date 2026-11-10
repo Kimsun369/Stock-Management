@@ -1,5 +1,6 @@
 import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
 import { Category } from '@/backend/types'
+import { beerCategoryIds, isBeerCategory } from '@/backend/category-utils'
 
 export async function getCategories(): Promise<Category[]> {
   const [catRows, productRows] = await Promise.all([
@@ -16,18 +17,25 @@ export async function getCategories(): Promise<Category[]> {
     }
   }
 
-  return catRows
-    .filter((c) => c.active === 'true')
+  const activeRows = catRows.filter((c) => c.active === 'true')
+  const beerIds = beerCategoryIds(activeRows)
+  const beerRows = activeRows.filter((c) => beerIds.has(c.id))
+  const beerCanonical = beerRows.find((c) => (c.name || '').trim().toLowerCase() === 'beer') || beerRows[0]
+  const visibleRows = activeRows.filter((c) => !beerIds.has(c.id) || c.id === beerCanonical?.id)
+
+  return visibleRows
     .map((c) => ({
       id: c.id,
-      name: c.name,
-      nameKm: c.nameKm || '',
-      description: c.description || '',
+      name: beerIds.has(c.id) ? 'Beer' : c.name,
+      nameKm: beerIds.has(c.id) ? 'ស្រាបៀរ' : c.nameKm || '',
+      description: beerIds.has(c.id) ? 'Beer and Beer & Cider products' : c.description || '',
       agreedPurchasePrice: Number(c.agreedPurchasePrice) || 0,
       active: true,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
-      productCount: productCountMap.get(c.id) || 0,
+      productCount: beerIds.has(c.id)
+        ? beerRows.reduce((sum, beer) => sum + (productCountMap.get(beer.id) || 0), 0)
+        : productCountMap.get(c.id) || 0,
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -40,7 +48,9 @@ export async function createCategory(
   if (!data.name.trim()) throw new Error('Category name is required')
 
   const existing = await getAllRows(SHEETS.Categories)
-  if (existing.some((c) => c.name.toLowerCase() === data.name.trim().toLowerCase())) {
+  const candidate = { id: '', name: data.name.trim(), nameKm: data.nameKm || '' }
+  if (existing.some((c) => (c.name || '').toLowerCase() === data.name.trim().toLowerCase() ||
+    (isBeerCategory(candidate) && c.active === 'true' && isBeerCategory(c)))) {
     throw new Error('DUPLICATE_CATEGORY')
   }
 
@@ -90,6 +100,10 @@ export async function updateCategory(
   const existing = await getAllRows(SHEETS.Categories)
   const cat = existing.find((c) => c.id === id)
   if (!cat) throw new Error('CATEGORY_NOT_FOUND')
+  if (data.name && existing.some((other) => other.id !== id && other.active === 'true' && (
+    (other.name || '').toLowerCase() === data.name!.trim().toLowerCase() ||
+    (isBeerCategory({ ...cat, name: data.name, nameKm: data.nameKm ?? cat.nameKm }) && isBeerCategory(other))
+  ))) throw new Error('DUPLICATE_CATEGORY')
 
   const updates: Record<string, string> = {}
   if (data.name) updates.name = data.name.trim()
@@ -102,8 +116,9 @@ export async function updateCategory(
     // If applyToProducts is true (or by default when agreed price changes), update products in category
     if (data.applyToProducts !== false) {
       const productRows = await getAllRows(SHEETS.Products)
+      const targetIds = isBeerCategory(cat) ? beerCategoryIds(existing) : new Set([id])
       for (const p of productRows) {
-        if (p.categoryId === id && p.active === 'true') {
+        if (targetIds.has(p.categoryId) && p.active === 'true') {
           await updateRowById(SHEETS.Products, p.id, { purchaseCost: priceStr })
         }
       }
@@ -134,13 +149,21 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string, userId: string, userName: string): Promise<void> {
-  const products = await getAllRows(SHEETS.Products)
-  const hasProducts = products.some((p) => p.categoryId === id && p.active === 'true')
+  const [products, categories] = await Promise.all([
+    getAllRows(SHEETS.Products),
+    getAllRows(SHEETS.Categories),
+  ])
+  const target = categories.find((category) => category.id === id)
+  if (!target) throw new Error('CATEGORY_NOT_FOUND')
+  const targetIds = isBeerCategory(target) ? beerCategoryIds(categories) : new Set([id])
+  const hasProducts = products.some((p) => targetIds.has(p.categoryId) && p.active === 'true')
   if (hasProducts) {
     throw new Error('CATEGORY_HAS_PRODUCTS')
   }
 
-  await updateRowById(SHEETS.Categories, id, { active: 'false' })
+  for (const categoryId of targetIds) {
+    await updateRowById(SHEETS.Categories, categoryId, { active: 'false' })
+  }
 
   await appendAuditLog({
     actorId: userId,

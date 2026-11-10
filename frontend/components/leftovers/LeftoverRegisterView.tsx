@@ -143,10 +143,10 @@ export function LeftoverRegisterView() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-[#121216] p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
         {/* Customer Information */}
         <div className="space-y-4">
-          <h2 className="text-sm font-bold text-gray-900 border-b pb-2">Customer Details / ព័ត៌មានភ្ញៀវ</h2>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-100 border-b pb-2">Customer Details / ព័ត៌មានភ្ញៀវ</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label={t('customerLeftovers.customerName')}
@@ -183,7 +183,7 @@ export function LeftoverRegisterView() {
         {/* Items to Reserve */}
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b pb-2">
-            <h2 className="text-sm font-bold text-gray-900">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-100">
               {t('customerLeftovers.items')} (Held for Customer)
             </h2>
             <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
@@ -208,9 +208,9 @@ export function LeftoverRegisterView() {
               const isPackageSelected = hasConversion && (item.unit || baseUnit).toLowerCase() === baseUnit.toLowerCase()
               const quantityInBase = Number(item.quantity) * (isPackageSelected ? conversionRate : 1)
               return (
-                <div key={idx} className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-xl space-y-2">
+                <div key={idx} className="p-4 bg-gray-50/70 dark:bg-zinc-800/50 border border-gray-200/80 rounded-xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-600">Item #{idx + 1}</span>
+                    <span className="text-xs font-bold text-gray-600 dark:text-zinc-300">Item #{idx + 1}</span>
                     {items.length > 1 && (
                       <button
                         type="button"

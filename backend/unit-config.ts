@@ -12,7 +12,7 @@ export function normalizeUnitPair<T extends UnitPair>(product: T, categoryLabel 
     return { ...product, unit: product.altUnit, altUnit: product.unit }
   }
   const context = `${categoryLabel} ${(product as any).name || ''} ${(product as any).nameKm || ''}`.toLowerCase()
-  const isBeerOrWater = /beer|water|ស្រាបៀរ|ទឹក/.test(context)
+  const isBeerOrWater = /beer|cider|water|ស្រាបៀរ|ស៊ីដឺ|ទឹក/.test(context)
   if (isBeerOrWater && rate <= 1 && !altUnit && MINOR_UNITS.has(unit) && ['can', 'bottle', 'កំប៉ុង', 'ដប'].includes(unit)) {
     return { ...product, unit: 'case', altUnit: product.unit, conversionRate: 24 }
   }

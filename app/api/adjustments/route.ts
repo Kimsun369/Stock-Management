@@ -12,7 +12,11 @@ export async function GET(req: Request) {
     const status = searchParams.get('status') || undefined
 
     const list = await getAdjustments(status)
-    return NextResponse.json(list)
+    // Staff can review their own corrections. Admins retain the full audit history.
+    const visibleList = session.user.role === 'ADMIN'
+      ? list
+      : list.filter((adjustment) => adjustment.submittedByUserId === session.user.id)
+    return NextResponse.json(visibleList)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
