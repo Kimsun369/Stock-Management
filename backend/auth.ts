@@ -2,9 +2,19 @@ import { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
-import { getAllRows, appendRow, SHEETS, SHEET_HEADERS, generateId } from '@/backend/sheets'
+import { getAllRows, appendRow, SHEETS, SHEET_HEADERS, generateId, initializeSheets } from '@/backend/sheets'
 
 const SUPER_ADMIN_EMAIL = 'povmesa97@gmail.com'
+
+// Ensure required Google Sheets tabs exist before any auth logic runs
+void (async () => {
+  try {
+    await initializeSheets()
+    console.log('✅ Sheets initialized – all required tabs are present')
+  } catch (e) {
+    console.error('❌ Error initializing Sheets:', (e as any)?.message)
+  }
+})();
 
 export const authOptions: AuthOptions = {
   providers: [

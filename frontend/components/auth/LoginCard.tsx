@@ -76,33 +76,33 @@ export function LoginCard() {
   }
 
   return (
-          <div className="flex flex-col items-center justify-center min-h-screen w-full max-w-md mx-auto card-glass-gold p-6 sm:p-8 shadow-2xl">
-      {/* 1. Header with Authentic Official Business Logo (No AI star icons) */}
-      <div className="text-center mb-7 fade-up-1">
-        <div className="flex items-center justify-center mb-3">
+    <div className="flex flex-col w-full max-w-[460px] mx-auto card-glass-gold rounded-3xl px-6 py-10 sm:px-12 sm:py-14 shadow-2xl">
+      {/* Header */}
+      <div className="flex flex-col items-center text-center mb-10 sm:mb-12 fade-up-1">
+        <div className="flex items-center justify-center mb-7">
           <img
             src="/images/logo-golden-dragon.png"
             alt="ភោជនីយដ្ឋាននាគមាសសន្តិភាព2"
-            className="h-14 sm:h-16 w-auto object-contain drop-shadow-md"
+            className="h-16 sm:h-20 w-auto object-contain drop-shadow-md"
           />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold font-khmer text-[#1C1917] dark:text-[#F4F1EA] tracking-tight leading-snug">
+        <h2 className="text-2xl sm:text-[28px] font-extrabold font-khmer text-[#1C1917] dark:text-[#F4F1EA] tracking-tight leading-snug">
           {language === 'km' ? 'ចូលប្រើប្រព័ន្ធគ្រប់គ្រងស្តុក' : 'Staff Sign In'}
         </h2>
-        <p className="text-sm sm:text-base text-[#78716C] dark:text-[#A8A29A] mt-1.5 font-medium font-khmer leading-relaxed">
+        <p className="mt-3 max-w-xs text-sm sm:text-base text-[#78716C] dark:text-[#A8A29A] font-medium font-khmer leading-relaxed">
           {language === 'km'
             ? 'ប្រព័ន្ធគ្រប់គ្រងស្តុក និងទំនិញភ្ញៀវផ្ញើ'
             : 'Production Bilingual Stock Management System'}
         </p>
       </div>
 
-      {/* Friendly, Non-IT Explanatory Error Banner */}
+      {/* Error banner */}
       {activeError && (
         <div
           role="alert"
-          className="mb-5 p-4 rounded-xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-sm font-semibold fade-up-2 shadow-xs"
+          className="mb-8 px-5 py-4 rounded-2xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-sm font-semibold fade-up-2 shadow-xs"
         >
-          <div className="flex items-start gap-2.5">
+          <div className="flex items-start gap-3.5">
             <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
             <div className="flex-1 text-left">
               <p className="font-khmer leading-relaxed">{activeError}</p>
@@ -110,7 +110,7 @@ export function LoginCard() {
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer font-khmer"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer font-khmer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>{t('auth.switchGoogleAccount')}</span>
@@ -121,60 +121,58 @@ export function LoginCard() {
         </div>
       )}
 
-      {/* 2. Login Form with Generous, Highly Legible Floating Label Inputs */}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
-        {/* Email Field with Floating Label */}
-        <div className="relative fade-up-2">
-          <div className="relative">
-            <input
-              {...register('email')}
-              id="staff-email"
-              type="email"
-              autoComplete="email"
-              placeholder=" "
-              className={`floating-input peer w-full h-14 px-4 pt-5 text-xs sm:text-sm rounded-xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 placeholder-transparent focus:ring-2 focus:ring-[#E8B84A]/30 ${
-                errors.email
-                  ? 'border-rose-400 focus:border-rose-500'
-                  : 'border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] focus:border-[#E8B84A]'
-              }`}
-            />
-            <label
-              htmlFor="staff-email"
-              className="floating-label absolute left-4 top-4 text-xs text-[#78716C] dark:text-[#A8A29A] font-semibold pointer-events-none transition-all duration-200 font-khmer"
-            >
-              {t('auth.email')}
-            </label>
-          </div>
+      {/* Login form */}
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-7">
+        {/* Email */}
+        <div className="fade-up-2">
+          <label
+            htmlFor="staff-email"
+            className="block mb-2.5 px-1 text-sm font-bold text-[#1C1917] dark:text-[#F4F1EA] font-khmer leading-relaxed"
+          >
+            {t('auth.email')}
+          </label>
+          <input
+            {...register('email')}
+            id="staff-email"
+            type="email"
+            autoComplete="email"
+            className={`w-full h-14 px-5 text-base leading-normal rounded-2xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 focus:ring-4 focus:ring-[#E8B84A]/20 ${
+              errors.email
+                ? 'border-rose-400 focus:border-rose-500'
+                : 'border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] focus:border-[#E8B84A]'
+            }`}
+          />
           {errors.email && (
-            <p className="mt-1 text-xs text-rose-500 font-medium">{t('auth.invalidCredentials')}</p>
+            <p className="mt-2 px-1 text-xs text-rose-500 font-medium leading-relaxed">
+              {t('auth.invalidCredentials')}
+            </p>
           )}
         </div>
 
-        {/* Password Field with Floating Label & Show/Hide Toggle */}
-        <div className="relative fade-up-3">
+        {/* Password */}
+        <div className="fade-up-3">
+          <label
+            htmlFor="staff-password"
+            className="block mb-2.5 px-1 text-sm font-bold text-[#1C1917] dark:text-[#F4F1EA] font-khmer leading-relaxed"
+          >
+            {t('auth.password')}
+          </label>
           <div className="relative">
             <input
               {...register('password')}
               id="staff-password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
-              placeholder=" "
-              className={`floating-input peer w-full h-14 px-4 pr-12 pt-5 text-xs sm:text-sm rounded-xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 placeholder-transparent focus:ring-2 focus:ring-[#E8B84A]/30 ${
+              className={`w-full h-14 pl-5 pr-14 text-base leading-normal rounded-2xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 focus:ring-4 focus:ring-[#E8B84A]/20 ${
                 errors.password
                   ? 'border-rose-400 focus:border-rose-500'
                   : 'border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] focus:border-[#E8B84A]'
               }`}
             />
-            <label
-              htmlFor="staff-password"
-              className="floating-label absolute left-4 top-4 text-xs text-[#78716C] dark:text-[#A8A29A] font-semibold pointer-events-none transition-all duration-200 font-khmer"
-            >
-              {t('auth.password')}
-            </label>
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#78716C] dark:text-[#A8A29A] hover:text-[#E8B84A] transition-colors p-1 cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-xl text-[#78716C] dark:text-[#A8A29A] hover:text-[#E8B84A] transition-colors cursor-pointer"
               tabIndex={-1}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
@@ -182,16 +180,18 @@ export function LoginCard() {
             </button>
           </div>
           {errors.password && (
-            <p className="mt-1 text-xs text-rose-500 font-medium">{t('auth.invalidCredentials')}</p>
+            <p className="mt-2 px-1 text-xs text-rose-500 font-medium leading-relaxed">
+              {t('auth.invalidCredentials')}
+            </p>
           )}
         </div>
 
-        {/* Primary Submit Button with Shimmer & High Contrast */}
-        <div className="pt-2 fade-up-4">
+        {/* Submit */}
+        <div className="pt-3 fade-up-4">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn-gold-primary w-full h-13 rounded-xl text-sm sm:text-base font-black flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md font-khmer"
+            className="btn-gold-primary w-full h-14 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md font-khmer"
           >
             {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin text-[#0A0A0B]" />
@@ -207,13 +207,13 @@ export function LoginCard() {
 
       {/* Google OAuth (if enabled) */}
       {googleOAuthEnabled && (
-        <div className="fade-up-5 mt-6">
-          <div className="relative my-4">
+        <div className="fade-up-5 mt-9">
+          <div className="relative mb-7">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[rgba(201,150,43,0.2)] dark:border-[rgba(232,184,74,0.18)]" />
             </div>
             <div className="relative flex justify-center">
-              <span className="px-3 bg-transparent text-xs text-[#78716C] dark:text-[#A8A29A] font-bold">
+              <span className="px-4 bg-transparent text-xs text-[#78716C] dark:text-[#A8A29A] font-bold">
                 {t('auth.or')}
               </span>
             </div>
@@ -222,7 +222,7 @@ export function LoginCard() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full h-12 rounded-xl border border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] bg-white/70 dark:bg-[#111113]/80 hover:bg-white dark:hover:bg-[#18181C] text-sm font-bold text-[#1C1917] dark:text-[#F4F1EA] transition-all flex items-center justify-center gap-2.5 shadow-2xs cursor-pointer font-khmer"
+            className="w-full h-14 rounded-2xl border border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] bg-white/70 dark:bg-[#111113]/80 hover:bg-white dark:hover:bg-[#18181C] text-sm sm:text-base font-bold text-[#1C1917] dark:text-[#F4F1EA] transition-all flex items-center justify-center gap-3 shadow-2xs cursor-pointer font-khmer"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -247,10 +247,12 @@ export function LoginCard() {
         </div>
       )}
 
-      {/* Subtle Bottom Note */}
-      <p className="mt-6 text-center text-xs text-[#78716C] dark:text-[#A8A29A] font-medium font-khmer fade-up-5 leading-relaxed">
-        ភោជនីយដ្ឋាននាគមាសសន្តិភាព2 • Authorized Staff Access
-      </p>
+      {/* Footer note */}
+      <div className="mt-10 pt-6 border-t border-[rgba(201,150,43,0.2)] dark:border-[rgba(232,184,74,0.18)] fade-up-5">
+        <p className="text-center text-xs text-[#78716C] dark:text-[#A8A29A] font-medium font-khmer leading-relaxed">
+          ភោជនីយដ្ឋាននាគមាសសន្តិភាព2 • Authorized Staff Access
+        </p>
+      </div>
     </div>
   )
 }
