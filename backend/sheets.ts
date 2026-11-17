@@ -1,4 +1,31 @@
 import { google, sheets_v4 } from 'googleapis'
+
+// Load Firebase Functions config into process.env when running in that environment
+if (process.env.FIREBASE_CONFIG) {
+  try {
+    // Dynamically require to avoid bundling issues in non‑Firebase builds
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const functions = require('firebase-functions') as typeof import('firebase-functions');
+    const cfg = functions.config();
+    // Google Sheets credentials
+    process.env.GOOGLE_SHEET_ID ||= cfg.google?.sheet_id;
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||= cfg.google?.service_account_email;
+    // Private key may contain escaped newlines; ensure proper format
+    if (cfg.google?.private_key) {
+      const key = cfg.google.private_key.replace(/\\n/g, '\n');
+      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ||= key;
+    }
+    // NextAuth secrets / URL
+    process.env.NEXTAUTH_SECRET ||= cfg.nextauth?.secret;
+    process.env.NEXTAUTH_URL ||= cfg.nextauth?.url;
+    // Google OAuth client
+    process.env.GOOGLE_CLIENT_ID ||= cfg.google?.client_id;
+    process.env.GOOGLE_CLIENT_SECRET ||= cfg.google?.client_secret;
+  } catch (e) {
+    // If firebase-functions is not available (local dev), ignore silently
+  }
+}
+
 import fs from 'fs'
 import path from 'path'
 
@@ -139,7 +166,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): P
 
 // In-memory cache with 5-second TTL to avoid Google Sheets 429 quota exhaustion
 const rowCache = new Map<string, { timestamp: number; data: SheetRow[] }>()
-const CACHE_TTL_MS = 5000
+const CACHE_TTL_MS = 1000
 
 export function invalidateCache(sheetName?: SheetName) {
   if (sheetName) {
