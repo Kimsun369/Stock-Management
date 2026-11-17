@@ -328,7 +328,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
         <table className="w-full text-left text-xs min-w-[1320px]">
           <thead className="bg-zinc-50 dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
             <tr>
-              <th className="whitespace-nowrap px-4 py-3 min-w-[220px]">{t('products.nameEn')}</th>
+              <th className="w-px whitespace-nowrap px-3 py-3">{t('products.nameEn')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('products.category')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('products.unit')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('products.conversionRule')}</th>
@@ -363,13 +363,13 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
 
                 return (
                   <tr key={p.id} className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
-                    <td className="whitespace-nowrap px-4 py-3">
+                    <td className="w-px whitespace-nowrap px-3 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                        <div className="shrink-0 rounded bg-zinc-100 p-1 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                           <Package className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <p className="font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{displayName}</p>
+                          <p className="font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{displayName}</p>
                         </div>
                       </div>
                     </td>

@@ -138,7 +138,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
       )}
 
       {/* Categories Table */}
-      <ScrollableTable stickyActions={userRole === 'ADMIN'}>
+      <ScrollableTable stickyActions={userRole === 'ADMIN'} stickyFirstColumn>
         <table className="w-full text-left text-xs min-w-[600px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b">
             <tr>

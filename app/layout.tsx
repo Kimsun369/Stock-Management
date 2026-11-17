@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   title: 'ភោជនីយដ្ឋាននាគមាសសន្តិភាព2 - Karaoke Stock System',
   description: 'Production-ready bilingual stock management for ភោជនីយដ្ឋាននាគមាសសន្តិភាព2.',
   icons: {
-    icon: '/icon.svg',
+    icon: '/images/logo-golden-dragon.png',
+    apple: '/images/logo-golden-dragon.png',
   },
 }
 

@@ -361,6 +361,21 @@ button, input, select, textarea, table, th, td, span, p, h1, h2, h3, h4 {
   background-color: #191920;
 }
 
+@media (max-width: 1023px) {
+  .scrollable-table-frame[data-sticky-actions='true'] thead th.sticky.right-0,
+  .scrollable-table-frame[data-sticky-actions='true'] tbody td.sticky.right-0 {
+    position: static !important;
+    right: auto !important;
+    border-left: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .scrollable-table-frame[data-sticky-actions='true'] thead th.sticky.right-0::before,
+  .scrollable-table-frame[data-sticky-actions='true'] tbody td.sticky.right-0::before {
+    display: none;
+  }
+}
+
 /* Subtle Film Grain */
 .film-grain {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.055'/%3E%3C/svg%3E");
