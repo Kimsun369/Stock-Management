@@ -68,6 +68,12 @@ export const authOptions: AuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
+    // Existing callbacks (signIn, jwt, session) stay unchanged.
+    // Add an error event to log the error name and message without exposing secrets.
+    async error({ error, ...rest }) {
+      // Log only the error identifier and message for debugging; never log env vars.
+      console.error('NextAuth error:', error)
+    },
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
         if (!user.email) return false

@@ -110,7 +110,7 @@ function getSheetsClient(): sheets_v4.Sheets {
 }
 
 function getSpreadsheetId(): string {
-  const id = process.env.GOOGLE_SHEET_ID
+  const id = process.env.GOOGLE_SHEET_ID?.trim()
   if (!id) throw new Error('Missing GOOGLE_SHEET_ID environment variable.')
   return id
 }
