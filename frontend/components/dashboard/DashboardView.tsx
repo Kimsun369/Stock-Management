@@ -23,9 +23,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Legend,
 } from 'recharts'
 import { useI18n } from '@/lib/i18n-context'
@@ -34,8 +31,6 @@ import { Button } from '@/frontend/components/ui/Button'
 import { useTheme } from '@/lib/theme-context'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
-
-const LUXURY_PALETTE = ['#F59E0B', '#E5B824', '#D97706', '#10B981', '#8B5CF6', '#EC4899', '#06B6D4']
 
 type PeriodType = 'today' | 'thisWeek' | 'thisMonth'
 
@@ -54,13 +49,12 @@ export function DashboardView() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-10 bg-zinc-200 dark:bg-zinc-800/80 rounded-xl w-64" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 sm:gap-5">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="h-32 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="h-84 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl" />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div className="h-84 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl" />
           <div className="h-84 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl" />
         </div>
@@ -89,9 +83,6 @@ export function DashboardView() {
 
   const periodLabel = t(`dashboard.${period}`)
 
-  // Clean data for Stock by Category (filter out categories with zero stock)
-  const categoryChartData = (data.categoryStockChart || []).filter((c: any) => c.units > 0)
-
   // Chart styling colors based on active theme
   const gridColor = isDark ? '#23232C' : '#F1F5F9'
   const textColor = isDark ? '#A1A1AA' : '#64748B'
@@ -101,7 +92,7 @@ export function DashboardView() {
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* 1. Clean, High-Contrast Page Header with Date Filter (No unnecessary top photo banner) */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800/80">
+      <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800/80">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white font-khmer leading-snug">
             {t('dashboard.title')}
@@ -146,7 +137,7 @@ export function DashboardView() {
       </div>
 
       {/* 2. ONLY EIGHT SUMMARY CARDS with Increased Font Legibility */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 sm:gap-5">
         {/* 1. Total Products */}
         <StatCard
           label={t('dashboard.totalProducts')}
@@ -158,7 +149,7 @@ export function DashboardView() {
         {/* 2. Available Stock */}
         <StatCard
           label={t('dashboard.availableStock')}
-          value={formatNumber(data.availableStock || 0)}
+          value={formatNumber(data.totalAvailableStock || 0)}
           icon={Boxes}
           variant="default"
         />
@@ -176,7 +167,7 @@ export function DashboardView() {
           label={t('dashboard.lowStockAlerts')}
           value={formatNumber(data.lowStockCount || 0)}
           icon={AlertTriangle}
-          variant={data.lowStockCount > 0 ? 'danger' : 'default'}
+          variant={data.lowStockCount > 0 ? 'warning' : 'default'}
         />
 
         {/* 5. Stock In */}
@@ -212,8 +203,8 @@ export function DashboardView() {
         />
       </div>
 
-      {/* 3. ONLY THREE CHARTS with High Legibility & Responsive Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Dashboard charts */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Chart 1: Stock In vs Stock Out (Last 7 Days) */}
         <div className="bg-white dark:bg-[#111116] luxury-card p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
           <div className="mb-5">
@@ -228,18 +219,18 @@ export function DashboardView() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.stockMovementChart || []}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: textColor }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: textColor }} tickLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 18, fill: textColor }} tickLine={false} />
+                <YAxis tick={{ fontSize: 18, fill: textColor }} tickLine={false} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: tooltipBg,
                     borderColor: tooltipBorder,
                     borderRadius: 12,
-                    fontSize: 13,
+                    fontSize: 19.5,
                     boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Legend wrapperStyle={{ fontSize: 18, paddingTop: 8 }} />
                 <Bar
                   dataKey="stockIn"
                   fill="#10B981"
@@ -271,15 +262,15 @@ export function DashboardView() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.purchaseTrendChart || []}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-                <XAxis dataKey="period" tick={{ fontSize: 12, fill: textColor }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: textColor }} tickLine={false} />
+                <XAxis dataKey="period" tick={{ fontSize: 18, fill: textColor }} tickLine={false} />
+                <YAxis tick={{ fontSize: 18, fill: textColor }} tickLine={false} />
                 <Tooltip
                   formatter={(val: any) => [formatCurrency(val), t('dashboard.spend')]}
                   contentStyle={{
                     backgroundColor: tooltipBg,
                     borderColor: tooltipBorder,
                     borderRadius: 12,
-                    fontSize: 13,
+                    fontSize: 19.5,
                     boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                   }}
                 />
@@ -294,56 +285,6 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Chart 3: Stock by Category (Donut Chart) */}
-        <div className="bg-white dark:bg-[#111116] luxury-card p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
-          <div className="mb-5">
-            <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white font-khmer">
-              {t('dashboard.stockByCategory')}
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1 font-medium font-khmer">
-              {t('dashboard.categoryDistribution')}
-            </p>
-          </div>
-          <div className="h-68 w-full flex-1 min-h-[260px]">
-            {categoryChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-zinc-400 font-khmer">
-                {t('common.noRecords')}
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryChartData}
-                    dataKey="units"
-                    nameKey={language === 'km' ? 'nameKm' : 'name'}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={82}
-                    paddingAngle={3}
-                    label={({ name, percent }: { name?: string; percent?: number }) =>
-                      `${name} ${(((percent ?? 0)) * 100).toFixed(0)}%`
-                    }
-                  >
-                    {categoryChartData.map((_: any, idx: number) => (
-                      <Cell key={`cell-${idx}`} fill={LUXURY_PALETTE[idx % LUXURY_PALETTE.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: any) => [`${formatNumber(val)} units`, t('dashboard.availableStock')]}
-                    contentStyle={{
-                      backgroundColor: tooltipBg,
-                      borderColor: tooltipBorder,
-                      borderRadius: 12,
-                      fontSize: 13,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   )

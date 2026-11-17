@@ -6,6 +6,8 @@ import { Download, FileSpreadsheet, Filter } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
+import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
+import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
 import { formatStockQuantity } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -119,53 +121,51 @@ export function ReportsView() {
           </div>
         </div>
 
-        <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
+        <p className="text-[16.5px] text-gray-400 flex items-center gap-1.5">
           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           <span>{t('reports.exportBomNotice')}</span>
         </p>
       </div>
 
       {/* Report Table */}
-      <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[650px]">
-            <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
+      <ScrollableTable>
+        <table className="w-full text-left text-xs min-w-[850px]">
+          <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
+            <tr>
+              {columns.map((col) => (
+                <th key={col} className="px-4 py-3 capitalize whitespace-nowrap">
+                  {renderColumn(col)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {isLoading ? (
               <tr>
-                {columns.map((col) => (
-                  <th key={col} className="px-4 py-3 capitalize whitespace-nowrap">
-                    {renderColumn(col)}
-                  </th>
-                ))}
+                <td colSpan={columns.length || 1} className="p-5 sm:p-8">
+                  <TableLoadingCard />
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={columns.length || 1} className="p-8 text-center text-gray-400">
-                    {t('common.loading')}
-                  </td>
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length || 1} className="p-8 text-center text-gray-400">
+                  {t('common.noRecords')}
+                </td>
+              </tr>
+            ) : (
+              items.map((row, idx) => (
+                <tr key={idx} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                  {columns.map((col) => (
+                    <td key={col} className="px-4 py-3 text-gray-800 dark:text-zinc-200 whitespace-nowrap">
+                      {renderValue(col, row[col], row)}
+                    </td>
+                  ))}
                 </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length || 1} className="p-8 text-center text-gray-400">
-                    {t('common.noRecords')}
-                  </td>
-                </tr>
-              ) : (
-                items.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                    {columns.map((col) => (
-                      <td key={col} className="px-4 py-3 text-gray-800 dark:text-zinc-200 whitespace-nowrap">
-                        {renderValue(col, row[col], row)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              ))
+            )}
+          </tbody>
+        </table>
+      </ScrollableTable>
     </div>
   )
 }

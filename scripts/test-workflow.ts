@@ -3,7 +3,7 @@ import { createCategory, updateCategory, getCategories } from '../backend/servic
 import { createProduct, getProducts, getProductById } from '../backend/services/products.service'
 import { recordStockIn, recordStockOut, recordReturn } from '../backend/services/inventory.service'
 import { registerCustomerLeftover, recordCustomerCollection } from '../backend/services/leftovers.service'
-import { requestAdjustment, reviewAdjustment } from '../backend/services/adjustments.service'
+import { requestAdjustment } from '../backend/services/adjustments.service'
 import { getDashboardMetrics } from '../backend/services/dashboard.service'
 import assert from 'assert'
 
@@ -189,19 +189,17 @@ async function run() {
   assert.strictEqual(prodAfterLeftover.reservedStock, 6, 'Reserved stock must be 6 cans')
   assert.strictEqual(prodAfterLeftover.availableStock, initialAvailable - 6, 'Available stock must be reduced by 6 cans')
 
-  const approvalRequest = await requestAdjustment({
+  const appliedAdjustment = await requestAdjustment({
     productId: product.id, requestedChange: 3, reason: 'Physical count found three extra cans', userId: staffId, userName: staffName,
   })
-  const approved = await reviewAdjustment({ id: approvalRequest.id, action: 'approve', userId: adminId, userName: adminName })
-  assert.strictEqual(approved.status, 'APPROVED', 'Admin approval must mark the request approved')
-  assert.strictEqual((await getProductById(product.id))?.physicalStock, 51, 'Approval must add the requested three cans')
-  const rejectionRequest = await requestAdjustment({
+  assert.strictEqual(appliedAdjustment.status, 'APPLIED', 'Stock corrections must apply immediately without approval')
+  assert.strictEqual((await getProductById(product.id))?.physicalStock, 51, 'The correction must immediately add three cans')
+  const secondAdjustment = await requestAdjustment({
     productId: product.id, requestedChange: -2, reason: 'Count did not match after checking again', userId: staffId, userName: staffName,
   })
-  const rejected = await reviewAdjustment({ id: rejectionRequest.id, action: 'reject', userId: adminId, userName: adminName, reviewNotes: 'Rejected after recount' })
-  assert.strictEqual(rejected.status, 'REJECTED', 'Admin rejection must mark the request rejected')
-  assert.strictEqual((await getProductById(product.id))?.physicalStock, 51, 'Rejection must leave stock unchanged')
-  console.log('✔ Adjustment approval changes stock; rejection leaves stock unchanged')
+  assert.strictEqual(secondAdjustment.status, 'APPLIED', 'Each valid stock correction must apply immediately')
+  assert.strictEqual((await getProductById(product.id))?.physicalStock, 49, 'The second correction must immediately subtract two cans')
+  console.log('✔ Staff stock corrections apply immediately without approval')
 
   // 7. Test Dashboard Metrics with Date Filters (today, thisWeek, thisMonth)
   console.log('\nStep 7: Testing Dashboard with Date Filters...')

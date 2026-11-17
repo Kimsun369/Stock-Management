@@ -151,6 +151,11 @@ export async function getDashboardMetrics(selectedPeriod: DashboardPeriod = 'thi
   const outstandingRecords = leftoverRows.filter(
     (r) => r.status === 'HELD' || r.status === 'PARTIALLY_COLLECTED'
   )
+  const outstandingRecordIds = new Set(outstandingRecords.map((record) => record.id))
+  const customerHeldUnits = itemRows.reduce((total, item) => {
+    if (!outstandingRecordIds.has(item.recordId)) return total
+    return total + Math.max(0, Number(item.remainingQuantity) || 0)
+  }, 0)
 
   // Chart 1: Stock In vs Stock Out (Last 7 Days)
   const last7Days: string[] = []
@@ -249,6 +254,7 @@ export async function getDashboardMetrics(selectedPeriod: DashboardPeriod = 'thi
     weeklyPurchases: Number(weeklyPurchases.toFixed(2)),
     yearlyPurchases: Number(yearlyPurchases.toFixed(2)),
     outstandingLeftovers: outstandingRecords.length,
+    customerHeldUnits,
     // Period filter data
     period: selectedPeriod,
     periodStockIn,

@@ -2,35 +2,29 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { ArrowUpFromLine, CheckCircle2, AlertCircle, Calculator, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowUpFromLine, Calculator, ChevronLeft, ChevronRight } from 'lucide-react'
+import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
+import { ErrorNotice } from '@/frontend/components/ui/ErrorNotice'
+import { useToast } from '@/components/ui/toast'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
-import { formatStockQuantity } from '@/lib/unit-labels'
+import { formatStockQuantity, formatUnitLabel } from '@/lib/unit-labels'
 import { TransactionDetail } from '@/frontend/components/inventory/TransactionDetail'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 function getUnitText(u: string, t: (k: string) => string): string {
-  if (!u) return ''
-  const clean = u.replace(/^products\.units\./, '').toLowerCase().trim()
-  const base = clean.split('/')[0]
-  const trans = t(`products.units.${base}`)
-  if (trans && !trans.startsWith('products.units.')) return trans
-  const direct = t(`products.units.${clean}`)
-  if (direct && !direct.startsWith('products.units.')) return direct
-  if (clean === 'can') return 'កំប៉ុង'
-  if (clean === 'box') return 'កេស'
-  if (clean === 'bottle') return 'ដប'
-  if (clean === 'carton') return 'កេស'
-  if (clean === 'pack') return 'កញ្ចប់'
-  return u
+  return formatUnitLabel(u, t)
 }
 
 export function StockOutView() {
   const { t, language, formatNumber, formatCurrency, formatDate } = useI18n()
-  const { data: products, mutate: mutateProducts } = useSWR('/api/products?limit=100', fetcher)
+  const { showToast } = useToast()
+  const [categoryId, setCategoryId] = useState('ALL')
+  const { data: products, mutate: mutateProducts } = useSWR(`/api/products?categoryId=${categoryId}&limit=500`, fetcher)
+  const { data: categories } = useSWR('/api/categories', fetcher)
   const [historyOffset, setHistoryOffset] = useState(0)
   const [detailItem, setDetailItem] = useState<any>(null)
   const { data: recentOut, mutate: mutateRecent } = useSWR(`/api/stock/out?limit=10&offset=${historyOffset}`, fetcher)
@@ -47,6 +41,13 @@ export function StockOutView() {
   const productList = products?.products || []
   const activeProductId = productId || productList[0]?.id || ''
   const selectedProduct = productList.find((p: any) => p.id === activeProductId)
+  const categoryOptions = [
+    { value: 'ALL', label: t('common.selectCategory') },
+    ...(Array.isArray(categories) ? categories : []).map((category: any) => ({
+      value: category.id,
+      label: language === 'km' && category.nameKm ? category.nameKm : category.name,
+    })),
+  ]
   const availableStock = selectedProduct ? selectedProduct.availableStock : 0
 
   // Use only the product's configured units; products without packaging stay in their base unit.
@@ -63,6 +64,12 @@ export function StockOutView() {
   const packageCost = Number(selectedProduct?.purchaseCost) || 0
   const baseUnitCost = hasConversion ? packageCost / conversionRate : packageCost
 
+  const getInsufficientStockMessage = () =>
+    t('stockOut.insufficientDetailed', {
+      requested: `${formatNumber(qtyNum)} ${formatUnitLabel(currentUnit, t)}`,
+      available: formatStockQuantity(availableStock, baseUnit, altUnit, conversionRate, t),
+    })
+
   const handleProductChange = (id: string) => {
     setProductId(id)
     const p = productList.find((item: any) => item.id === id)
@@ -77,13 +84,9 @@ export function StockOutView() {
     setSuccessMsg(false)
 
     if (baseQuantityDeducted > availableStock) {
-      setErrorMsg(
-        t('stockOut.insufficientDetailed', {
-          requested: baseQuantityDeducted,
-          available: availableStock,
-          unit: t(`products.units.${baseUnit}`) || baseUnit,
-        })
-      )
+      const message = getInsufficientStockMessage()
+      setErrorMsg(message)
+      showToast(message, 'error')
       setIsLoading(false)
       return
     }
@@ -105,13 +108,16 @@ export function StockOutView() {
       if (!res.ok) throw new Error(json.error || 'Failed to record stock out')
 
       setSuccessMsg(true)
+      showToast(t('stockOut.success'), 'success')
       setReason('')
       setHistoryOffset(0)
       mutateRecent()
       mutateProducts()
       setTimeout(() => setSuccessMsg(false), 5000)
     } catch (err: any) {
-      setErrorMsg(err.message === 'INSUFFICIENT_STOCK' ? t('errors.INSUFFICIENT_STOCK') : err.message)
+      const message = err.message === 'INSUFFICIENT_STOCK' ? getInsufficientStockMessage() : err.message
+      setErrorMsg(message)
+      showToast(message, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -141,20 +147,24 @@ export function StockOutView() {
         {/* Form Card */}
         <div className="lg:col-span-2 bg-white dark:bg-[#121216] p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs">
           {successMsg && (
-            <div className="mb-4 flex items-center gap-2 p-3.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs border border-emerald-200">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="font-semibold">{t('stockOut.success')}</span>
-            </div>
+            <SuccessNotice className="mb-4">{t('stockOut.success')}</SuccessNotice>
           )}
 
           {errorMsg && (
-            <div className="mb-4 flex items-center gap-2 p-3.5 rounded-lg bg-red-50 text-red-700 text-xs border border-red-200">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
+            <ErrorNotice className="mb-4">{errorMsg}</ErrorNotice>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <Select
+              label={t('reports.filterCategory')}
+              options={categoryOptions}
+              value={categoryId}
+              onChange={(event) => {
+                setCategoryId(event.target.value)
+                setProductId('')
+                setSelectedUnit('')
+              }}
+            />
             <Select
               label={t('stockOut.product')}
               required
@@ -166,19 +176,19 @@ export function StockOutView() {
             {selectedProduct && (
               <div className="p-3.5 bg-amber-400/10 dark:bg-amber-950/40 rounded-lg text-xs text-zinc-700 dark:text-zinc-200 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('products.physicalStock')}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block text-[15px] uppercase font-bold">{t('products.physicalStock')}</span>
                   <span className="font-bold text-sm">
                     {formatStockQuantity(selectedProduct.physicalStock, selectedProduct.unit, selectedProduct.altUnit, selectedProduct.conversionRate, t)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('products.reservedStock')}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block text-[15px] uppercase font-bold">{t('products.reservedStock')}</span>
                   <span className="font-bold text-sm text-amber-600">
                     {formatStockQuantity(selectedProduct.reservedStock, selectedProduct.unit, selectedProduct.altUnit, selectedProduct.conversionRate, t)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-zinc-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t('dashboard.availableStock')}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block text-[15px] uppercase font-bold">{t('dashboard.availableStock')}</span>
                   <span className="font-bold text-sm text-amber-600 dark:text-amber-400">
                     {formatStockQuantity(selectedProduct.availableStock, selectedProduct.unit, selectedProduct.altUnit, selectedProduct.conversionRate, t)}
                   </span>
@@ -214,8 +224,8 @@ export function StockOutView() {
                 <p className="text-xs text-amber-800">
                   <span className="font-bold">{quantity} {getUnitText(baseUnit, t)}</span> × <span className="font-bold">{conversionRate} {getUnitText(altUnit, t)}</span> = <span className="font-extrabold text-amber-950 underline">{baseQuantityDeducted} {getUnitText(altUnit, t)}</span>
                 </p>
-                <p className="text-[11px] text-amber-700">
-                  {t('stockOut.conversionDeductNote', { qty: baseQuantityDeducted, unit: getUnitText(baseUnit, t) })}
+                <p className="text-[16.5px] text-amber-700">
+                  {t('stockOut.conversionDeductNote', { qty: formatNumber(baseQuantityDeducted), unit: getUnitText(altUnit, t) })}
                 </p>
               </div>
             )}
@@ -260,7 +270,7 @@ export function StockOutView() {
                   <span className="truncate pr-2">{language === 'km' && item.productNameKm ? item.productNameKm : item.productName}</span>
                   <span className="text-amber-600 dark:text-amber-400 font-bold">-{formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>
                 </div>
-                <div className="flex justify-between text-zinc-500 dark:text-zinc-400 text-[10px]">
+                <div className="flex justify-between text-zinc-500 dark:text-zinc-400 text-[15px]">
                   <span className="truncate max-w-[140px]">{item.notes || item.reference || item.reason}</span>
                   <span>{formatDate(item.createdAt)}</span>
                 </div>

@@ -38,18 +38,16 @@ export function StatCard({
     <div
       className={`relative bg-white dark:bg-[#111116] luxury-card rounded-2xl p-5 sm:p-6 border border-zinc-200 dark:border-zinc-800 shadow-2xs hover:shadow-md transition-all duration-200 ${borderStyles[variant]}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <p className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-400 tracking-wide font-khmer truncate">
-            {label}
-          </p>
-          <p className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 truncate">
-            {value}
-          </p>
-        </div>
-        <div className={`p-3 rounded-xl ${iconStyles[variant]} shadow-2xs shrink-0`}>
-          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-        </div>
+      <div className="space-y-1.5 min-w-0">
+        <p className="pr-14 text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-400 tracking-wide font-khmer whitespace-normal">
+          {label}
+        </p>
+        <p className="text-2xl sm:text-3xl 2xl:text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 whitespace-nowrap">
+          {value}
+        </p>
+      </div>
+      <div className={`absolute top-5 right-5 sm:top-6 sm:right-6 p-3 rounded-xl ${iconStyles[variant]} shadow-2xs shrink-0`}>
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
       </div>
       {subtitle && (
         <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-2.5 font-semibold font-khmer">

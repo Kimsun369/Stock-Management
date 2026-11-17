@@ -6,6 +6,8 @@ import { History, Shield } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { AuditLog } from '@/backend/types'
 import { Badge } from '@/frontend/components/ui/Badge'
+import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
+import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -22,23 +24,23 @@ export function AuditLogsView() {
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{t('auditLogs.subtitle')}</p>
       </div>
 
-      <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[700px]">
+      {/* Audit Logs Table */}
+      <ScrollableTable>
+        <table className="w-full text-left text-xs min-w-[850px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="px-5 py-3">{t('auditLogs.timestamp')}</th>
-              <th className="px-4 py-3">{t('auditLogs.actor')}</th>
-              <th className="px-3 py-3">{t('auditLogs.action')}</th>
-              <th className="px-3 py-3">{t('auditLogs.entity')}</th>
-              <th className="px-5 py-3">{t('auditLogs.details')}</th>
+              <th className="whitespace-nowrap px-5 py-3">{t('auditLogs.timestamp')}</th>
+              <th className="whitespace-nowrap px-4 py-3">{t('auditLogs.actor')}</th>
+              <th className="whitespace-nowrap px-3 py-3">{t('auditLogs.action')}</th>
+              <th className="whitespace-nowrap px-3 py-3">{t('auditLogs.entity')}</th>
+              <th className="whitespace-nowrap px-5 py-3 min-w-[280px]">{t('auditLogs.details')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-gray-400">
-                  {t('common.loading')}
+                <td colSpan={5} className="p-5 sm:p-8">
+                  <TableLoadingCard />
                 </td>
               </tr>
             ) : items.length === 0 ? (
@@ -49,21 +51,20 @@ export function AuditLogsView() {
               </tr>
             ) : (
               items.map((log) => (
-                <tr key={log.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                  <td className="px-5 py-3 text-gray-400 whitespace-nowrap">{formatDate(log.createdAt, true)}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-800 dark:text-zinc-200">{log.actorName || 'Staff'}</td>
-                  <td className="px-3 py-3">
+                <tr key={log.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                  <td className="whitespace-nowrap px-5 py-3 text-gray-400">{formatDate(log.createdAt, true)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-800 dark:text-zinc-200">{log.actorName || 'Staff'}</td>
+                  <td className="whitespace-nowrap px-3 py-3">
                     <Badge variant="info">{log.action}</Badge>
                   </td>
-                  <td className="px-3 py-3 text-gray-500 dark:text-zinc-400 font-mono text-[11px]">{log.entityType}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 max-w-md break-words">{log.details || '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-gray-500 dark:text-zinc-400 font-mono text-[16.5px]">{log.entityType}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-zinc-300 min-w-[280px] break-words">{log.details || '—'}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-        </div>
-      </div>
+      </ScrollableTable>
     </div>
   )
 }

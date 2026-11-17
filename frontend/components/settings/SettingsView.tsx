@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import useSWR from 'swr'
-import { Settings, Save, CheckCircle2, Database } from 'lucide-react'
+import { Settings, Save, Database } from 'lucide-react'
+import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
+import { useToast } from '@/components/ui/toast'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
@@ -12,6 +14,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function SettingsView() {
   const { t, setLanguage, setNumeralSystem } = useI18n()
+  const { showToast } = useToast()
   const { data: settings, mutate } = useSWR('/api/settings', fetcher)
 
   const [defaultLanguage, setDefaultLanguage] = useState('km')
@@ -52,15 +55,15 @@ export function SettingsView() {
         }),
       })
 
-      if (res.ok) {
-        setSuccess(true)
-        setLanguage(defaultLanguage as any)
-        setNumeralSystem(numeralSystem as any)
-        mutate()
-        setTimeout(() => setSuccess(false), 4000)
-      }
-    } catch {
-      alert('Error saving settings')
+      if (!res.ok) throw new Error((await res.json()).error || 'Error saving settings')
+      setSuccess(true)
+      showToast(t('settings.success'), 'success')
+      setLanguage(defaultLanguage as any)
+      setNumeralSystem(numeralSystem as any)
+      mutate()
+      setTimeout(() => setSuccess(false), 4000)
+    } catch (err: any) {
+      showToast(err.message || 'Error saving settings', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -72,13 +75,13 @@ export function SettingsView() {
     setSeedSuccess(false)
     try {
       const res = await fetch('/api/seed', { method: 'POST' })
-      if (res.ok) {
-        setSeedSuccess(true)
-        mutate()
-        setTimeout(() => setSeedSuccess(false), 4000)
-      }
-    } catch {
-      alert('Seed failed')
+      if (!res.ok) throw new Error((await res.json()).error || 'Seed failed')
+      setSeedSuccess(true)
+      showToast('Seed data generated successfully! Products and initial inventory are ready.', 'success')
+      mutate()
+      setTimeout(() => setSeedSuccess(false), 4000)
+    } catch (err: any) {
+      showToast(err.message || 'Seed failed', 'error')
     } finally {
       setIsSeeding(false)
     }
@@ -94,10 +97,7 @@ export function SettingsView() {
       </div>
 
       {success && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 shadow-2xs font-semibold">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span>{t('settings.success')}</span>
-        </div>
+        <SuccessNotice>{t('settings.success')}</SuccessNotice>
       )}
 
       {/* Main Settings Form */}

@@ -11,7 +11,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const { id } = await params
     const body = await req.json()
-    await updateStaffUser(id, body, session.user.id, session.user.name || 'Admin')
+    await updateStaffUser(id, body, session.user.id, session.user.name || 'Admin', session.user.email || '')
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

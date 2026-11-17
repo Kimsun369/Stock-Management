@@ -1,14 +1,26 @@
 export function formatUnitLabel(unit: string | undefined, t: (key: string) => string): string {
   if (!unit) return ''
-  const key = unit.replace(/^products\.units\./, '').split('/')[0].trim()
+  const rawKey = unit.replace(/^products\.units\./, '').split('/')[0].trim().toLowerCase()
+  const aliases: Record<string, string> = {
+    'កំប៉ុង': 'can', 'ដប': 'bottle', 'កេស': 'case', 'កញ្ចប់': 'pack',
+    'ដុំ': 'piece', 'សន្លឹក': 'sheet', 'មុខ': 'unit', 'ឯកតា': 'unit',
+    'គីឡូក្រាម': 'kg', 'ក្រាម': 'g', 'លីត្រ': 'liter',
+  }
+  const key = aliases[rawKey] || rawKey
   const translated = t(`products.units.${key}`)
   if (!translated.startsWith('products.units.')) return translated
-  const khmerFallback: Record<string, string> = {
-    can: 'កំប៉ុង', bottle: 'ដប', box: 'កេស', carton: 'កេស', case: 'កេស',
-    piece: 'ដុំ', pack: 'កញ្ចប់', sheet: 'សន្លឹក', unit: 'មុខ', units: 'មុខ',
-    package: 'កញ្ចប់',
+  const fallback: Record<string, { en: string; km: string }> = {
+    can: { en: 'Can(s)', km: 'កំប៉ុង' }, bottle: { en: 'Bottle(s)', km: 'ដប' },
+    box: { en: 'Box(es)', km: 'កេស' }, carton: { en: 'Carton(s)', km: 'កេស' },
+    case: { en: 'Case(s)', km: 'កេស' }, piece: { en: 'Piece(s)', km: 'ដុំ' },
+    pack: { en: 'Pack(s)', km: 'កញ្ចប់' }, package: { en: 'Package(s)', km: 'កញ្ចប់' },
+    sheet: { en: 'Sheet(s)', km: 'សន្លឹក' }, unit: { en: 'Unit(s)', km: 'មុខ' },
+    kg: { en: 'Kilogram(s)', km: 'គីឡូក្រាម' }, g: { en: 'Gram(s)', km: 'ក្រាម' },
+    liter: { en: 'Liter(s)', km: 'លីត្រ' },
   }
-  return khmerFallback[key] || key
+  const languageFallback = fallback[key]
+  const isKhmer = t('products.units.unit') === 'មុខ'
+  return languageFallback ? (isKhmer ? languageFallback.km : languageFallback.en) : key
 }
 
 export function formatStockQuantity(

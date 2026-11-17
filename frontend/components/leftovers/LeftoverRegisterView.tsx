@@ -4,8 +4,10 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Trash2, ArrowLeft, Clock, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, ArrowLeft, Clock } from 'lucide-react'
+import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
 import { useI18n } from '@/lib/i18n-context'
+import { useToast } from '@/components/ui/toast'
 import { formatUnitLabel } from '@/lib/unit-labels'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
@@ -25,6 +27,7 @@ function getUnitText(unit: string, t: (key: string) => string): string {
 
 export function LeftoverRegisterView() {
   const { t, language } = useI18n()
+  const { showToast } = useToast()
   const router = useRouter()
   const { data: products } = useSWR('/api/products?limit=100', fetcher)
 
@@ -97,12 +100,15 @@ export function LeftoverRegisterView() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to register leftover')
 
+      showToast(t('common.success'), 'success')
       setSuccess(true)
       setTimeout(() => {
         router.push('/dashboard/customer-leftovers')
-      }, 1500)
+      }, 1200)
     } catch (err: any) {
-      setErrorMsg(err.message.includes('INSUFFICIENT_STOCK') ? t('errors.INSUFFICIENT_STOCK') : err.message)
+      const msg = err.message.includes('INSUFFICIENT_STOCK') ? t('errors.INSUFFICIENT_STOCK') : err.message
+      setErrorMsg(msg)
+      showToast(msg, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -131,10 +137,7 @@ export function LeftoverRegisterView() {
       </div>
 
       {success && (
-        <div className="p-4 rounded-xl bg-emerald-50 text-emerald-800 text-sm border border-emerald-200 flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>{t('customerLeftovers.successRegister')}. Redirecting...</span>
-        </div>
+        <SuccessNotice>{t('customerLeftovers.successRegister')}. Redirecting...</SuccessNotice>
       )}
 
       {errorMsg && (
@@ -252,7 +255,7 @@ export function LeftoverRegisterView() {
                   </div>
 
                   {hasConversion && (
-                    <p className="text-[10px] text-amber-700">
+                    <p className="text-[15px] text-amber-700">
                       {item.quantity} {getUnitText(item.unit || baseUnit, t)} × {isPackageSelected ? conversionRate : 1} {getUnitText(altUnit, t)} = {quantityInBase} {getUnitText(altUnit, t)}
                     </p>
                   )}

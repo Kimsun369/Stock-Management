@@ -4,15 +4,20 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { Plus, Edit2, Trash2, Tags, DollarSign } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
+import { useToast } from '@/components/ui/toast'
 import { Category } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Modal } from '@/frontend/components/ui/Modal'
+import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
+import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
+import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STAFF' }) {
   const { t, language, formatCurrency } = useI18n()
+  const { showToast } = useToast()
   const { data: categories, isLoading, mutate } = useSWR<Category[]>('/api/categories', fetcher)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -23,6 +28,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
   const [agreedPurchasePrice, setAgreedPurchasePrice] = useState('0.00')
   const [applyToProducts, setApplyToProducts] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
@@ -72,11 +78,15 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
       if (!res.ok) throw new Error(json.error || 'Failed to save')
 
       setIsModalOpen(false)
-      setSuccessMsg(t('common.success'))
-      setTimeout(() => setSuccessMsg(null), 3000)
+      const message = editingCategory ? t('common.updated') : t('common.created')
+      showToast(message, 'success')
+      setSuccessMsg(message)
+      setTimeout(() => setSuccessMsg(null), 6000)
       mutate()
     } catch (err: any) {
-      setFormError(err.message === 'DUPLICATE_CATEGORY' ? t('categories.duplicate') : err.message)
+      const msg = err.message === 'DUPLICATE_CATEGORY' ? t('categories.duplicate') : err.message
+      setFormError(msg)
+      showToast(msg, 'error')
     } finally {
       setIsSaving(false)
     }
@@ -84,16 +94,24 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
 
   const handleDelete = async (c: Category) => {
     if (!window.confirm(`${t('common.confirmDelete')} (${c.name})`)) return
+    setDeletingId(c.id)
     try {
       const res = await fetch(`/api/categories/${c.id}`, { method: 'DELETE' })
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        alert(json.error === 'CATEGORY_HAS_PRODUCTS' ? t('categories.cannotDeleteHasProducts') : json.error)
+        const msg = json.error === 'CATEGORY_HAS_PRODUCTS' ? t('categories.cannotDeleteHasProducts') : (json.error || 'Failed to delete')
+        showToast(msg, 'error')
         return
       }
+      const message = t('common.deleted')
+      showToast(message, 'success')
+      setSuccessMsg(message)
+      setTimeout(() => setSuccessMsg(null), 6000)
       mutate()
     } catch {
-      alert('Error deleting category')
+      showToast('Error deleting category', 'error')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -116,41 +134,41 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
       </div>
 
       {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 text-xs border border-emerald-200">
-          {successMsg}
-        </div>
+        <SuccessNotice>{successMsg}</SuccessNotice>
       )}
 
       {/* Categories Table */}
-      <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[600px]">
+      <ScrollableTable stickyActions={userRole === 'ADMIN'}>
+        <table className="w-full text-left text-xs min-w-[600px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="px-5 py-3">{t('categories.title')}</th>
-              <th className="px-4 py-3">{t('categories.description')}</th>
-              <th className="px-4 py-3 text-right">{t('categories.agreedPurchasePrice')}</th>
-              <th className="px-3 py-3 text-center">{t('categories.productCount')}</th>
-              {userRole === 'ADMIN' && <th className="px-4 py-3 text-right">{t('common.actions')}</th>}
+              <th className="whitespace-nowrap px-5 py-3 min-w-[180px]">{t('categories.title')}</th>
+              <th className="whitespace-nowrap px-4 py-3 min-w-[200px]">{t('categories.description')}</th>
+              <th className="whitespace-nowrap px-3 py-3 text-center">{t('categories.productCount')}</th>
+              {userRole === 'ADMIN' && (
+                <th className="sticky right-0 z-20 whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
+                  {t('common.actions')}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {isLoading ? (
               <tr>
-                <td colSpan={userRole === 'ADMIN' ? 5 : 4} className="p-8 text-center text-gray-400">
-                  {t('common.loading')}
+                <td colSpan={userRole === 'ADMIN' ? 4 : 3} className="p-5 sm:p-8">
+                  <TableLoadingCard />
                 </td>
               </tr>
             ) : categoryList.length === 0 ? (
               <tr>
-                <td colSpan={userRole === 'ADMIN' ? 5 : 4} className="p-8 text-center text-gray-400">
+                <td colSpan={userRole === 'ADMIN' ? 4 : 3} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
             ) : (
               categoryList.map((c) => (
-                <tr key={c.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                  <td className="px-5 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                <tr key={c.id} className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                  <td className="whitespace-nowrap px-5 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-amber-400/10 dark:bg-amber-400/15 text-amber-600 dark:text-amber-400">
                         <Tags className="w-3.5 h-3.5" />
@@ -158,13 +176,10 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
                       <span>{language === 'km' && c.nameKm ? c.nameKm : c.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.description || '—'}</td>
-                  <td className="px-4 py-3 text-right font-bold text-slate-800">
-                    {formatCurrency(c.agreedPurchasePrice || 0)}
-                  </td>
-                  <td className="px-3 py-3 text-center font-semibold text-amber-600 dark:text-amber-400">{c.productCount || 0}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.description || '—'}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-center font-semibold text-amber-600 dark:text-amber-400">{c.productCount || 0}</td>
                   {userRole === 'ADMIN' && (
-                    <td className="px-4 py-3 text-right space-x-1">
+                    <td className="sticky right-0 z-10 whitespace-nowrap px-4 py-3 text-right space-x-1 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
                       <button
                         onClick={() => handleOpenEdit(c)}
                         className="p-1.5 rounded text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:text-amber-400 hover:bg-amber-400/10 dark:bg-amber-400/15"
@@ -174,10 +189,15 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
                       </button>
                       <button
                         onClick={() => handleDelete(c)}
-                        className="p-1.5 rounded text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50"
+                        disabled={deletingId === c.id}
+                        className="p-1.5 rounded text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
                         title={t('common.delete')}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingId === c.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500 inline-block" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </td>
                   )}
@@ -186,8 +206,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
             )}
           </tbody>
         </table>
-        </div>
-      </div>
+      </ScrollableTable>
 
       {/* Add / Edit Modal */}
       <Modal

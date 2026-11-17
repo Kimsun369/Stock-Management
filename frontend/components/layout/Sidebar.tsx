@@ -30,7 +30,7 @@ interface SidebarProps {
 
 export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const { t, language } = useI18n()
+  const { t } = useI18n()
 
   const navItems = [
     { href: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -82,11 +82,11 @@ export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
               </div>
               {/* Official Business Name Preserved Exactly */}
               <div className="mt-1.5">
-                <h1 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 tracking-tight font-khmer truncate">
+                <h1 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 tracking-tight font-khmer">
                   ភោជនីយដ្ឋាននាគមាសសន្តិភាព2
                 </h1>
                 <p className="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-bold mt-0.5">
-                  Karaoke Management
+                  {t('common.karaokeManagement')}
                 </p>
               </div>
             </Link>
@@ -94,7 +94,7 @@ export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 lg:hidden transition-colors cursor-pointer"
-              aria-label="Close menu"
+              aria-label={t('common.closeMenu')}
             >
               <X className="h-5 w-5" />
             </button>
@@ -129,7 +129,7 @@ export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
                       : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-200'
                   }`}
                 />
-                <span className="truncate">{item.label}</span>
+                <span className="min-w-0">{item.label}</span>
               </Link>
             )
           })}
@@ -137,7 +137,7 @@ export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
           {userRole === 'ADMIN' && (
             <>
               <div className="pt-5 pb-1.5 px-3 text-xs font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-khmer">
-                {language === 'km' ? 'ការគ្រប់គ្រងប្រព័ន្ធ' : 'Administration'}
+                {t('nav.administration')}
               </div>
               {adminItems.map((item) => {
                 const Icon = item.icon
@@ -161,7 +161,7 @@ export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
                           : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-200'
                       }`}
                     />
-                    <span className="truncate">{item.label}</span>
+                    <span className="min-w-0">{item.label}</span>
                   </Link>
                 )
               })}
@@ -170,8 +170,8 @@ export function Sidebar({ userRole = 'STAFF', isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-          <span className="font-semibold truncate font-khmer">ភោជនីយដ្ឋាននាគមាស</span>
+        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex flex-col items-start gap-1">
+          <span className="font-semibold font-khmer">ភោជនីយដ្ឋាននាគមាស</span>
           <span className="font-extrabold text-amber-600 dark:text-amber-400">v2.0 Gold</span>
         </div>
       </aside>

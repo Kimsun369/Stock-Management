@@ -2,17 +2,160 @@ import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEET
 import { AdjustmentRequest, AdjustmentStatus } from '@/backend/types'
 import { normalizeUnitPair } from '@/backend/unit-config'
 
+let legacyAdjustmentResolution: Promise<void> | null = null
+
+async function resolveLegacyPendingAdjustments(): Promise<void> {
+  if (legacyAdjustmentResolution) return legacyAdjustmentResolution
+
+  legacyAdjustmentResolution = (async () => {
+    const [adjustments, products, transactions, users, auditRows] = await Promise.all([
+      getAllRows(SHEETS.AdjustmentRequests),
+      getAllRows(SHEETS.Products),
+      getAllRows(SHEETS.StockTransactions),
+      getAllRows(SHEETS.Users),
+      getAllRows(SHEETS.AuditLogs),
+    ])
+    const pending = adjustments
+      .filter((row) => row.status === 'PENDING')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    const userNames = new Map(users.map((user) => [user.id, user.name]))
+
+    for (const request of pending) {
+      const product = products.find((item) => item.id === request.productId)
+      const reference = `ADJ-${request.id.slice(-6)}`
+      const existingTransaction = transactions.find(
+        (item) => item.type === 'ADJUSTMENT' && item.productId === request.productId && item.reference === reference
+      )
+
+      if (existingTransaction) {
+        const hasLaterTransaction = transactions.some(
+          (item) => item.productId === request.productId && item.id !== existingTransaction.id &&
+            item.createdAt > existingTransaction.createdAt
+        )
+        if (
+          product && !hasLaterTransaction &&
+          Number(product.physicalStock) === Number(existingTransaction.previousBalance)
+        ) {
+          const repairedBalance = Number(existingTransaction.resultingBalance) || 0
+          await updateRowById(SHEETS.Products, product.id, { physicalStock: String(repairedBalance) })
+          product.physicalStock = String(repairedBalance)
+        }
+        await updateRowById(SHEETS.AdjustmentRequests, request.id, {
+          status: 'APPLIED',
+          reviewedByUserId: request.submittedByUserId || '',
+          reviewNotes: 'Applied immediately; approval is not required.',
+          reviewedAt: existingTransaction.createdAt || new Date().toISOString(),
+        })
+        continue
+      }
+
+      const currentQuantity = Number(product?.physicalStock) || 0
+      const change = Number(request.requestedChange)
+      const resultingBalance = currentQuantity + change
+      const invalid = !product || !Number.isFinite(change) || change === 0 || resultingBalance < 0
+
+      if (invalid) {
+        const now = new Date().toISOString()
+        const reason = !product
+          ? 'Not applied because the product no longer exists.'
+          : 'Not applied because the change would result in invalid or negative stock.'
+        await updateRowById(SHEETS.AdjustmentRequests, request.id, {
+          status: 'REJECTED',
+          reviewedByUserId: request.submittedByUserId || '',
+          reviewNotes: reason,
+          reviewedAt: now,
+        })
+        if (!auditRows.some((audit) => audit.entityId === request.id && audit.action === 'ADJUSTMENT_NOT_APPLIED')) {
+          await appendAuditLog({
+            actorId: request.submittedByUserId || '',
+          actorName: userNames.get(request.submittedByUserId) ||
+            auditRows.find((audit) => audit.entityId === request.id)?.actorName || 'Former staff',
+            action: 'ADJUSTMENT_NOT_APPLIED',
+            entityType: 'StockAdjustmentRequest',
+            entityId: request.id,
+            details: `${reason} Request: ${request.reason || 'No reason provided'}`,
+          })
+          auditRows.push({ entityId: request.id, action: 'ADJUSTMENT_NOT_APPLIED' })
+        }
+        continue
+      }
+
+      const now = new Date().toISOString()
+      const transactionId = generateId()
+      await appendRow(SHEETS.StockTransactions, [
+        transactionId,
+        product.id,
+        'ADJUSTMENT',
+        String(Math.abs(change)),
+        String(currentQuantity),
+        String(resultingBalance),
+        String((Number(product.purchaseCost) || 0) / (Number(product.conversionRate) > 1 ? Number(product.conversionRate) : 1)),
+        'USD',
+        reference,
+        `Count Correction: ${request.reason || 'Stock count correction'}`,
+        request.notes || '',
+        request.submittedByUserId || '',
+        now,
+      ])
+      transactions.push({
+        id: transactionId,
+        productId: product.id,
+        type: 'ADJUSTMENT',
+        reference,
+        previousBalance: String(currentQuantity),
+        resultingBalance: String(resultingBalance),
+        createdAt: now,
+      })
+
+      await updateRowById(SHEETS.Products, product.id, { physicalStock: String(resultingBalance) })
+      product.physicalStock = String(resultingBalance)
+      await updateRowById(SHEETS.AdjustmentRequests, request.id, {
+        status: 'APPLIED',
+        reviewedByUserId: request.submittedByUserId || '',
+        reviewNotes: 'Applied immediately; approval is not required.',
+        reviewedAt: now,
+      })
+
+      if (!auditRows.some((audit) => audit.entityId === request.id && audit.action === 'ADJUSTMENT_APPLIED')) {
+        const actorName = userNames.get(request.submittedByUserId) ||
+          auditRows.find((audit) => audit.entityId === request.id)?.actorName || 'Former staff'
+        await appendAuditLog({
+          actorId: request.submittedByUserId || '',
+          actorName,
+          action: 'ADJUSTMENT_APPLIED',
+          entityType: 'StockAdjustmentRequest',
+          entityId: request.id,
+          details: `Applied legacy stock adjustment for ${product.name}: ${change > 0 ? '+' : ''}${change} (Balance: ${currentQuantity} -> ${resultingBalance}; Reason: ${request.reason || 'No reason provided'})`,
+        })
+        auditRows.push({ entityId: request.id, action: 'ADJUSTMENT_APPLIED' })
+      }
+    }
+  })()
+
+  try {
+    await legacyAdjustmentResolution
+  } finally {
+    legacyAdjustmentResolution = null
+  }
+}
+
 export async function getAdjustments(status?: string): Promise<AdjustmentRequest[]> {
-  const [adjRows, prodRows, userRows, categoryRows] = await Promise.all([
+  const initialRows = await getAllRows(SHEETS.AdjustmentRequests)
+  if (initialRows.some((row) => row.status === 'PENDING')) {
+    await resolveLegacyPendingAdjustments()
+  }
+
+  const [adjRows, prodRows, userRows, categoryRows, auditRows] = await Promise.all([
     getAllRows(SHEETS.AdjustmentRequests),
     getAllRows(SHEETS.Products),
     getAllRows(SHEETS.Users),
     getAllRows(SHEETS.Categories),
+    getAllRows(SHEETS.AuditLogs),
   ])
-
   const categoryMap = new Map(categoryRows.map((c) => [c.id, `${c.name || ''} ${c.nameKm || ''}`]))
   const prodMap = new Map(prodRows.map((p) => [p.id, normalizeUnitPair(p, categoryMap.get(p.categoryId) || '')]))
   const userMap = new Map(userRows.map((u) => [u.id, u.name]))
+  const auditNameMap = new Map(auditRows.map((a) => [a.entityId, a.actorName]))
 
   let list: AdjustmentRequest[] = adjRows.map((row) => ({
     id: row.id,
@@ -25,20 +168,19 @@ export async function getAdjustments(status?: string): Promise<AdjustmentRequest
     requestedChange: Number(row.requestedChange) || 0,
     reason: row.reason || '',
     notes: row.notes || '',
-    status: row.status as AdjustmentStatus,
+    status: (row.status === 'REJECTED' ? 'REJECTED' : 'APPLIED') as AdjustmentStatus,
     submittedByUserId: row.submittedByUserId || '',
-    submittedByName: userMap.get(row.submittedByUserId) || 'Staff',
+    submittedByName: userMap.get(row.submittedByUserId) || auditNameMap.get(row.id) || 'Former staff',
     reviewedByUserId: row.reviewedByUserId || '',
-    reviewedByName: userMap.get(row.reviewedByUserId) || '',
+    reviewedByName: userMap.get(row.reviewedByUserId) || auditNameMap.get(row.id) || '',
     reviewNotes: row.reviewNotes || '',
     createdAt: row.createdAt || '',
     reviewedAt: row.reviewedAt || '',
   }))
 
   if (status && status !== 'ALL') {
-    list = list.filter((a) => a.status === status)
+    list = list.filter((adjustment) => adjustment.status === status)
   }
-
   list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   return list
 }
@@ -51,9 +193,7 @@ export async function requestAdjustment(params: {
   userId: string
   userName: string
 }): Promise<AdjustmentRequest> {
-  if (params.requestedChange === 0) {
-    throw new Error('Requested change cannot be zero')
-  }
+  if (params.requestedChange === 0) throw new Error('Requested change cannot be zero')
   if (!params.reason.trim()) throw new Error('Adjustment reason is required')
 
   const products = await getAllRows(SHEETS.Products)
@@ -62,17 +202,11 @@ export async function requestAdjustment(params: {
 
   const currentQty = Number(product.physicalStock) || 0
   const resultingBalance = currentQty + params.requestedChange
-  if (resultingBalance < 0) {
-    throw new Error('Adjustment cannot result in negative inventory')
-  }
+  if (resultingBalance < 0) throw new Error('Adjustment cannot result in negative inventory')
 
   const id = generateId()
   const now = new Date().toISOString()
-
-  await updateRowById(SHEETS.Products, product.id, {
-    physicalStock: String(resultingBalance),
-  })
-
+  await updateRowById(SHEETS.Products, product.id, { physicalStock: String(resultingBalance) })
   await appendRow(SHEETS.StockTransactions, [
     generateId(),
     product.id,
@@ -88,7 +222,6 @@ export async function requestAdjustment(params: {
     params.userId,
     now,
   ])
-
   await appendRow(SHEETS.AdjustmentRequests, [
     id,
     product.id,
@@ -96,14 +229,13 @@ export async function requestAdjustment(params: {
     String(params.requestedChange),
     params.reason,
     params.notes || '',
-    'APPROVED',
+    'APPLIED',
     params.userId,
-    params.userId, // Applied immediately; no admin approval needed.
-    'Applied immediately by staff',
+    params.userId,
+    'Applied immediately; approval is not required.',
     now,
     now,
   ])
-
   await appendAuditLog({
     actorId: params.userId,
     actorName: params.userName,
@@ -121,105 +253,13 @@ export async function requestAdjustment(params: {
     requestedChange: params.requestedChange,
     reason: params.reason,
     notes: params.notes || '',
-    status: 'APPROVED',
+    status: 'APPLIED',
     submittedByUserId: params.userId,
     submittedByName: params.userName,
     reviewedByUserId: params.userId,
-    reviewNotes: 'Applied immediately by staff',
+    reviewedByName: params.userName,
+    reviewNotes: 'Applied immediately; approval is not required.',
     createdAt: now,
-    reviewedAt: '',
+    reviewedAt: now,
   }
 }
-
-export async function reviewAdjustment(params: {
-  id: string
-  action: 'approve' | 'reject'
-  reviewNotes?: string
-  userId: string
-  userName: string
-}): Promise<AdjustmentRequest> {
-  const adjustments = await getAllRows(SHEETS.AdjustmentRequests)
-  const adj = adjustments.find((a) => a.id === params.id)
-  if (!adj) throw new Error('ADJUSTMENT_NOT_FOUND')
-
-  if (adj.status !== 'PENDING') {
-    throw new Error('This adjustment has already been reviewed')
-  }
-
-  const now = new Date().toISOString()
-  const products = await getAllRows(SHEETS.Products)
-  const product = products.find((p) => p.id === adj.productId)
-
-  if (params.action === 'approve') {
-    if (!product) throw new Error('Product not found')
-
-    const currentPhysical = Number(product.physicalStock) || 0
-    const change = Number(adj.requestedChange) || 0
-    const resultingBalance = currentPhysical + change
-
-    if (resultingBalance < 0) {
-      throw new Error('Cannot approve: resulting stock would be negative')
-    }
-
-    // 1. Update product physical stock
-    await updateRowById(SHEETS.Products, product.id, {
-      physicalStock: String(resultingBalance),
-    })
-
-    // 2. Append StockTransaction ledger entry
-    const txId = generateId()
-    await appendRow(SHEETS.StockTransactions, [
-      txId,
-      product.id,
-      'ADJUSTMENT',
-      String(Math.abs(change)),
-      String(currentPhysical),
-      String(resultingBalance),
-      String((Number(product.purchaseCost) || 0) / (Number(product.conversionRate) > 1 ? Number(product.conversionRate) : 1)),
-      'USD',
-      `ADJ-${adj.id.slice(-6)}`,
-      `Count Correction: ${adj.reason}`,
-      params.reviewNotes || adj.notes || '',
-      params.userId,
-      now,
-    ])
-
-    // 3. Mark adjustment approved
-    await updateRowById(SHEETS.AdjustmentRequests, adj.id, {
-      status: 'APPROVED',
-      reviewedByUserId: params.userId,
-      reviewNotes: params.reviewNotes || 'Approved by Admin',
-      reviewedAt: now,
-    })
-
-    await appendAuditLog({
-      actorId: params.userId,
-      actorName: params.userName,
-      action: 'ADJUSTMENT_APPROVED',
-      entityType: 'StockAdjustmentRequest',
-      entityId: adj.id,
-      details: `Approved stock adjustment for ${product.name}: ${change > 0 ? '+' : ''}${change} (Balance: ${currentPhysical} -> ${resultingBalance})`,
-    })
-  } else {
-    // Rejected
-    await updateRowById(SHEETS.AdjustmentRequests, adj.id, {
-      status: 'REJECTED',
-      reviewedByUserId: params.userId,
-      reviewNotes: params.reviewNotes || 'Rejected by Admin',
-      reviewedAt: now,
-    })
-
-    await appendAuditLog({
-      actorId: params.userId,
-      actorName: params.userName,
-      action: 'ADJUSTMENT_REJECTED',
-      entityType: 'StockAdjustmentRequest',
-      entityId: adj.id,
-      details: `Rejected stock adjustment request for ${product?.name || adj.productId}. Notes: ${params.reviewNotes || 'None'}`,
-    })
-  }
-
-  const updated = (await getAdjustments()).find((a) => a.id === params.id)
-  return updated!
-}
-

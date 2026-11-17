@@ -24,7 +24,7 @@ export default function UnifiedAuthPage() {
       {/* =========================================================
           RIGHT 45% LOGIN PANEL (Full screen on mobile/tablet)
          ========================================================= */}
-      <div className="relative w-full lg:w-[45%] h-full flex flex-col justify-between p-6 sm:p-10 z-10 overflow-y-auto lg:overflow-hidden">
+      <div className="relative w-full lg:w-[45%] h-full flex flex-col justify-between p-6 sm:p-10 z-10 overflow-y-auto">
         {/* Mobile Background: Dimmed full-screen photo of active VIP suite */}
         <div className="absolute inset-0 z-0 lg:hidden overflow-hidden pointer-events-none">
           <img
@@ -72,7 +72,7 @@ export default function UnifiedAuthPage() {
         </div>
 
         {/* Mobile Bottom Footer */}
-        <footer className="relative z-20 lg:hidden text-center text-[10px] text-[#78716C] dark:text-[#A8A29A] font-khmer pb-1">
+        <footer className="relative z-20 lg:hidden text-center text-[15px] text-[#78716C] dark:text-[#A8A29A] font-khmer pb-1">
           ភោជនីយដ្ឋាននាគមាសសន្តិភាព2 • v2.0 Gold
         </footer>
       </div>

@@ -1,4 +1,4 @@
-type CategoryLike = { id: string; name?: string; nameKm?: string }
+export type CategoryLike = { id?: string; name?: string; nameKm?: string } & Record<string, any>
 
 /** Beer and Beer & Cider are one user-facing category. */
 export function isBeerCategory(category: CategoryLike): boolean {
@@ -9,7 +9,7 @@ export function isBeerCategory(category: CategoryLike): boolean {
 }
 
 export function beerCategoryIds(categories: CategoryLike[]): Set<string> {
-  return new Set(categories.filter(isBeerCategory).map((category) => category.id))
+  return new Set(categories.filter(isBeerCategory).map((category) => category.id || '').filter(Boolean))
 }
 
 export function canonicalBeerCategoryId(categories: CategoryLike[]): string | undefined {

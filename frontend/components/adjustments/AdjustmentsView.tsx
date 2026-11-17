@@ -4,18 +4,21 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { Plus } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
+import { useToast } from '@/components/ui/toast'
 import { formatStockQuantity, formatUnitLabel } from '@/lib/unit-labels'
 import { AdjustmentRequest } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
-import { Badge } from '@/frontend/components/ui/Badge'
 import { Modal } from '@/frontend/components/ui/Modal'
+import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
+import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STAFF' }) {
   const { t, language, formatDate } = useI18n()
+  const { showToast } = useToast()
   const { data: adjustments, isLoading, mutate } = useSWR<AdjustmentRequest[]>('/api/adjustments', fetcher)
   const { data: products } = useSWR('/api/products?limit=100', fetcher)
 
@@ -70,10 +73,12 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to submit request')
 
+      showToast(t('common.success'), 'success')
       setIsRequestModalOpen(false)
       mutate()
     } catch (err: any) {
       setErrorMsg(err.message)
+      showToast(err.message, 'error')
     } finally {
       setIsSaving(false)
     }
@@ -97,64 +102,53 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
         </Button>
       </div>
 
-      <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[760px]">
+      {/* Adjustments Table */}
+      <ScrollableTable>
+        <table className="w-full text-left text-xs min-w-[960px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="px-5 py-3">{t('adjustments.product')}</th>
-              <th className="px-3 py-3 text-right">{t('adjustments.currentQty')}</th>
-              <th className="px-3 py-3 text-right">{t('adjustments.requestedChange')}</th>
-              <th className="px-4 py-3">{t('products.description')}</th>
-              <th className="px-3 py-3">{t('common.status')}</th>
-              <th className="px-3 py-3">{t('adjustments.submittedBy')}</th>
-              <th className="px-4 py-3">{t('common.date')}</th>
+              <th className="whitespace-nowrap px-5 py-3 min-w-[180px]">{t('adjustments.product')}</th>
+              <th className="whitespace-nowrap px-3 py-3 text-right">{t('adjustments.currentQty')}</th>
+              <th className="whitespace-nowrap px-3 py-3 text-right">{t('adjustments.requestedChange')}</th>
+              <th className="whitespace-nowrap px-4 py-3 min-w-[200px]">{t('products.description')}</th>
+              <th className="whitespace-nowrap px-3 py-3">{t('adjustments.submittedBy')}</th>
+              <th className="whitespace-nowrap px-4 py-3">{t('common.date')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-400">
-                  {t('common.loading')}
+                <td colSpan={6} className="p-5 sm:p-8">
+                  <TableLoadingCard />
                 </td>
               </tr>
             ) : (adjustments || []).length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-400">
+                <td colSpan={6} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
             ) : (
               (adjustments || []).map((adj) => (
-                <tr key={adj.id} onClick={() => setDetailAdjustment(adj)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setDetailAdjustment(adj) }} tabIndex={0} role="button" aria-label={`${t('common.view')} ${adj.productName}`} className="cursor-pointer hover:bg-zinc-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 dark:hover:bg-zinc-800/40">
-                  <td className="px-5 py-3 font-semibold text-gray-900 dark:text-zinc-100">{adj.productName}</td>
-                  <td className="px-3 py-3 text-right text-gray-600 dark:text-zinc-300 font-mono">
+                <tr key={adj.id} onClick={() => setDetailAdjustment(adj)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setDetailAdjustment(adj) }} tabIndex={0} role="button" aria-label={`${t('common.view')} ${adj.productName}`} className="cursor-pointer hover:bg-zinc-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 dark:hover:bg-zinc-800/40 transition-colors">
+                  <td className="whitespace-nowrap px-5 py-3 font-semibold text-gray-900 dark:text-zinc-100">{adj.productName}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right text-gray-600 dark:text-zinc-300 font-mono">
                     {formatStockQuantity(adj.currentQuantity, adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
                   </td>
-                  <td className="px-3 py-3 text-right font-mono font-bold">
+                  <td className="whitespace-nowrap px-3 py-3 text-right font-mono font-bold">
                     <span className={adj.requestedChange > 0 ? 'text-emerald-600' : 'text-red-600'}>
                       {adj.requestedChange > 0 ? '+' : '-'}{formatStockQuantity(Math.abs(adj.requestedChange), adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-zinc-300">{adj.reason}</td>
-                  <td className="px-3 py-3">
-                    <Badge
-                      variant={
-                        adj.status === 'APPROVED' ? 'success' : adj.status === 'PENDING' ? 'warning' : 'danger'
-                      }
-                    >
-                      {t(`adjustments.statuses.${adj.status}`)}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-3 text-gray-600 dark:text-zinc-300">{adj.submittedByName || 'Staff'}</td>
-                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(adj.createdAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-gray-600 dark:text-zinc-300">{adj.reason}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-gray-600 dark:text-zinc-300">{adj.submittedByName || 'Staff'}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-gray-400">{formatDate(adj.createdAt)}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-        </div>
-      </div>
+      </ScrollableTable>
 
       <Modal isOpen={Boolean(detailAdjustment)} onClose={() => setDetailAdjustment(null)} title={detailAdjustment?.productName || t('adjustments.title')}>
         {detailAdjustment && <dl className="grid gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/40">
@@ -162,9 +156,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
           <div><dt className="text-xs text-zinc-500">{t('adjustments.requestedChange')}</dt><dd className="font-semibold">{detailAdjustment.requestedChange > 0 ? '+' : '-'}{formatStockQuantity(Math.abs(detailAdjustment.requestedChange), detailAdjustment.productUnit, detailAdjustment.productAltUnit, detailAdjustment.productConversionRate, t)}</dd></div>
           <div><dt className="text-xs text-zinc-500">{t('products.description')}</dt><dd className="whitespace-pre-wrap">{detailAdjustment.reason || '—'}</dd></div>
           <div><dt className="text-xs text-zinc-500">{t('adjustments.submittedBy')}</dt><dd>{detailAdjustment.submittedByName || 'Staff'}</dd></div>
-          <div><dt className="text-xs text-zinc-500">{t('common.status')}</dt><dd>{t(`adjustments.statuses.${detailAdjustment.status}`)}</dd></div>
           <div><dt className="text-xs text-zinc-500">{t('common.date')}</dt><dd>{formatDate(detailAdjustment.createdAt)}</dd></div>
-          {detailAdjustment.reviewNotes && <div><dt className="text-xs text-zinc-500">{t('adjustments.reviewedBy')}</dt><dd>{detailAdjustment.reviewedByName || '—'} · {detailAdjustment.reviewNotes}</dd></div>}
         </dl>}
       </Modal>
 
@@ -221,7 +213,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
             />
           </div>
           {hasConversion && (
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[16.5px] text-zinc-500">
               {t('adjustments.requestedChange')}: {requestedChange} {formatUnitLabel(currentUnit, t)} = {requestedChangeInStockUnits} {formatUnitLabel(minorUnit, t)}
             </p>
           )}

@@ -2,7 +2,10 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Undo2, CheckCircle2, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Undo2, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react'
+import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
+import { ErrorNotice } from '@/frontend/components/ui/ErrorNotice'
+import { useToast } from '@/components/ui/toast'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
@@ -14,6 +17,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export function ReturnView() {
   const { t, language, formatDate } = useI18n()
+  const { showToast } = useToast()
   const { data: products } = useSWR('/api/products?limit=100', fetcher)
   const [historyOffset, setHistoryOffset] = useState(0)
   const [detailItem, setDetailItem] = useState<any>(null)
@@ -69,12 +73,14 @@ export function ReturnView() {
       if (!res.ok) throw new Error(json.error || 'Failed to process return')
 
       setSuccessMsg(true)
+      showToast(t('returnedItems.success'), 'success')
       setReason('')
       setHistoryOffset(0)
       mutateRecent()
       setTimeout(() => setSuccessMsg(false), 4000)
     } catch (err: any) {
       setErrorMsg(err.message)
+      showToast(err.message, 'error')
     } finally {
       setIsLoading(false)
     }
@@ -101,16 +107,11 @@ export function ReturnView() {
           </div>
 
           {successMsg && (
-            <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-emerald-50 text-emerald-800 text-xs border border-emerald-200">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{t('returnedItems.success')}</span>
-            </div>
+            <SuccessNotice className="mb-4">{t('returnedItems.success')}</SuccessNotice>
           )}
 
           {errorMsg && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-xs border border-red-200">
-              {errorMsg}
-            </div>
+            <ErrorNotice className="mb-4">{errorMsg}</ErrorNotice>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -165,7 +166,7 @@ export function ReturnView() {
                   <span className="truncate pr-2">{language === 'km' && item.productNameKm ? item.productNameKm : item.productName}</span>
                   <span className="text-emerald-600 font-bold">+{formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>
                 </div>
-                <div className="flex justify-between text-gray-500 dark:text-zinc-400 text-[10px]">
+                <div className="flex justify-between text-gray-500 dark:text-zinc-400 text-[15px]">
                   <span>{item.reason}</span>
                   <span>{formatDate(item.createdAt)}</span>
                 </div>

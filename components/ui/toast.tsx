@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { CheckCircle, XCircle, AlertCircle, X } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ToastType = 'success' | 'error' | 'warning'
@@ -23,10 +23,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = useCallback((message: string, type: ToastType = 'success') => {
     const id = Math.random().toString(36).slice(2)
-    setToasts((prev) => [...prev, { id, type, message }])
+    setToasts((prev) => [
+      // Keep one visible notification per type so repeated failed submits cannot stack.
+      ...prev.filter((toast) => toast.type !== type),
+      { id, type, message },
+    ].slice(-3))
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    }, 7000)
   }, [])
 
   const dismiss = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id))
@@ -34,7 +38,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+      <div
+        aria-live="polite"
+        className="fixed top-4 right-4 z-[9999] flex w-[calc(100%-2rem)] max-w-lg flex-col gap-3 pointer-events-none sm:top-6 sm:right-6 sm:w-full"
+      >
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} />
         ))}
@@ -47,34 +54,53 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    setTimeout(() => setVisible(true), 10)
+    const t = setTimeout(() => setVisible(true), 10)
+    return () => clearTimeout(t)
   }, [])
 
   const icons: Record<ToastType, React.ReactNode> = {
-    success: <CheckCircle size={18} className="text-emerald-600 shrink-0" />,
-    error: <XCircle size={18} className="text-red-500 shrink-0" />,
-    warning: <AlertCircle size={18} className="text-amber-500 shrink-0" />,
+    success: (
+      <span className="rounded-full bg-white/20 p-2 text-white shrink-0">
+        <CheckCircle2 size={22} strokeWidth={3} />
+      </span>
+    ),
+    error: (
+      <span className="rounded-full bg-white/20 p-2 text-white shrink-0">
+        <XCircle size={22} strokeWidth={3} />
+      </span>
+    ),
+    warning: (
+      <span className="rounded-full bg-black/10 p-2 text-zinc-950 shrink-0">
+        <AlertCircle size={22} strokeWidth={3} />
+      </span>
+    ),
   }
 
   const bgClasses: Record<ToastType, string> = {
-    success: 'border-emerald-200 bg-emerald-50',
-    error: 'border-red-200 bg-red-50',
-    warning: 'border-amber-200 bg-amber-50',
+    success:
+      'border-emerald-500 bg-emerald-700 text-white shadow-2xl shadow-emerald-950/35 ring-2 ring-emerald-200 dark:border-emerald-400 dark:bg-emerald-800 dark:ring-emerald-950',
+    error:
+      'border-rose-500 bg-rose-700 text-white shadow-2xl shadow-rose-950/35 ring-2 ring-rose-200 dark:border-rose-400 dark:bg-rose-800 dark:ring-rose-950',
+    warning:
+      'border-amber-500 bg-amber-500 text-zinc-950 shadow-2xl shadow-amber-950/30 ring-2 ring-amber-200 dark:border-amber-300 dark:bg-amber-400 dark:ring-amber-950',
   }
 
   return (
     <div
+      role="status"
       className={cn(
-        'pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all duration-300',
+        'pointer-events-auto flex min-h-[76px] items-center gap-4 rounded-2xl border-2 px-5 py-4 transition-all duration-300 ease-out sm:px-6',
         bgClasses[toast.type],
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+        visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-2 scale-95'
       )}
     >
       {icons[toast.type]}
-      <span className="text-sm font-medium text-gray-800 flex-1">{toast.message}</span>
+      <span className="flex-1 text-base font-extrabold leading-snug sm:text-lg">{toast.message}</span>
       <button
+        type="button"
         onClick={() => onDismiss(toast.id)}
-        className="text-gray-400 hover:text-gray-600 transition-colors"
+        className="shrink-0 rounded-lg bg-black/10 p-2 text-white hover:bg-black/20 transition-colors"
+        aria-label="Close notification"
       >
         <X size={14} />
       </button>

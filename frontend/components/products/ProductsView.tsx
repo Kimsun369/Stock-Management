@@ -2,32 +2,24 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Plus, Search, Edit2, Trash2, Package } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Package, Loader2 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
+import { useToast } from '@/components/ui/toast'
 import { ProductWithDetails } from '@/backend/types'
 import { Button } from '@/frontend/components/ui/Button'
 import { Input } from '@/frontend/components/ui/Input'
 import { Select } from '@/frontend/components/ui/Select'
 import { Badge } from '@/frontend/components/ui/Badge'
 import { Modal } from '@/frontend/components/ui/Modal'
-import { formatStockQuantity } from '@/lib/unit-labels'
+import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
+import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
+import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
+import { formatStockQuantity, formatUnitLabel } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 function getUnitText(u: string, t: (k: string) => string): string {
-  if (!u) return ''
-  const clean = u.replace(/^products\.units\./, '').toLowerCase().trim()
-  const base = clean.split('/')[0]
-  const trans = t(`products.units.${base}`)
-  if (trans && !trans.startsWith('products.units.')) return trans
-  const direct = t(`products.units.${clean}`)
-  if (direct && !direct.startsWith('products.units.')) return direct
-  if (clean === 'can') return 'កំប៉ុង'
-  if (clean === 'box') return 'កេស'
-  if (clean === 'bottle') return 'ដប'
-  if (clean === 'carton') return 'កេស'
-  if (clean === 'pack') return 'កញ្ចប់'
-  return u
+  return formatUnitLabel(u, t)
 }
 
 function getEditableMainUnit(unit: string): string {
@@ -42,6 +34,7 @@ function getEditableMainUnit(unit: string): string {
 
 function getEditablePackagingUnit(unit: string): string {
   const value = unit.trim().toLowerCase()
+  if (['piece', 'ដុំ'].includes(value)) return 'piece'
   if (['case', 'carton', 'box', 'កេស'].includes(value)) return 'កេស'
   if (['pack', 'package', 'កញ្ចប់'].includes(value)) return 'កញ្ចប់'
   return ''
@@ -49,6 +42,7 @@ function getEditablePackagingUnit(unit: string): string {
 
 export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STAFF' }) {
   const { t, language, formatNumber, formatCurrency } = useI18n()
+  const { showToast } = useToast()
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('ALL')
   const [status, setStatus] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock'>('all')
@@ -70,11 +64,13 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
     description: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const apiUrl = `/api/products?search=${encodeURIComponent(search)}&categoryId=${categoryId}&status=${status}&page=${page}&limit=20`
-  const { data, isLoading, mutate } = useSWR(apiUrl, fetcher)
+  // Match the Inventory ledger's page size so both views render the same backend rows.
+  const apiUrl = `/api/products?search=${encodeURIComponent(search)}&categoryId=${categoryId}&status=${status}&page=${page}&limit=500`
+  const { data, isLoading, mutate } = useSWR(apiUrl, fetcher, { refreshInterval: 30000 })
   const { data: categories } = useSWR('/api/categories', fetcher)
 
   const categoryList = Array.isArray(categories) ? categories : []
@@ -103,7 +99,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
     // API unit pairs are normalized as package -> inner unit; the edit form stores
     // inner unit -> package so its conversion reads “1 package = N inner units”.
     const hasPackaging = Boolean(p.altUnit && Number(p.conversionRate) > 1)
-    const editMainUnit = getEditableMainUnit(hasPackaging ? p.altUnit : p.unit)
+    const editMainUnit = getEditableMainUnit((hasPackaging ? p.altUnit : p.unit) || 'unit')
     const editPackagingUnit = hasPackaging ? getEditablePackagingUnit(p.unit) : ''
     setFormData({
       sku: p.sku,
@@ -153,11 +149,14 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
       }
 
       setIsModalOpen(false)
-      setSuccessMsg(t('common.success'))
-      setTimeout(() => setSuccessMsg(null), 3000)
+      showToast(editingProduct ? t('common.updated') : t('common.created'), 'success')
+      setSuccessMsg(editingProduct ? t('common.updated') : t('common.created'))
+      setTimeout(() => setSuccessMsg(null), 6000)
       mutate()
     } catch (err: any) {
-      setFormError(err.message === 'DUPLICATE_SKU' ? t('errors.DUPLICATE_SKU') : err.message)
+      const msg = err.message === 'DUPLICATE_SKU' ? t('errors.DUPLICATE_SKU') : err.message
+      setFormError(msg)
+      showToast(msg, 'error')
     } finally {
       setIsSaving(false)
     }
@@ -165,18 +164,26 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
 
   const handleDeactivate = async (id: string, name: string) => {
     if (!window.confirm(`${t('common.confirmDelete')} (${name})`)) return
+    setDeletingId(id)
     try {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Failed to deactivate product')
+      }
+      showToast(t('common.deleted'), 'success')
       setSuccessMsg(t('common.success'))
       setTimeout(() => setSuccessMsg(null), 3000)
       mutate()
-    } catch {
-      alert('Error deactivating product')
+    } catch (err: any) {
+      showToast(err.message || 'Error deactivating product', 'error')
+    } finally {
+      setDeletingId(null)
     }
   }
 
   const categoryOptions = [
-    { value: 'ALL', label: t('common.all') },
+    { value: 'ALL', label: t('common.selectCategory') },
     ...categoryList.map((c: any) => ({
       value: c.id,
       label: language === 'km' && c.nameKm ? c.nameKm : c.name,
@@ -197,11 +204,17 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
 
   const altUnitOptions = [
     { value: '', label: t('products.noAltUnit') },
+    { value: 'piece', label: t('products.units.piece') },
     { value: 'កេស', label: t('products.units.carton') },
     { value: 'កញ្ចប់', label: t('products.units.pack') },
   ]
 
   const productsList: ProductWithDetails[] = data?.products || []
+  const categorySummary = categoryList
+  const allProductCount = categorySummary.reduce(
+    (count: number, category: any) => count + (Number(category.productCount) || 0),
+    0
+  )
 
   return (
     <div className="space-y-6">
@@ -222,14 +235,49 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
       </div>
 
       {successMsg && (
-        <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 text-xs border border-emerald-200">
-          {successMsg}
-        </div>
+        <SuccessNotice>{successMsg}</SuccessNotice>
       )}
 
+      <section aria-labelledby="products-category-summary" className="space-y-3">
+        <h2 id="products-category-summary" className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+          {t('inventory.categorySummary')}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+          <button
+            type="button"
+            aria-pressed={categoryId === 'ALL'}
+            onClick={() => {
+              setCategoryId('ALL')
+              setPage(1)
+            }}
+            className={`min-w-0 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${categoryId === 'ALL' ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' : 'border-zinc-200 bg-white hover:border-amber-300 dark:border-zinc-800 dark:bg-[#121216] dark:hover:border-amber-700'}`}
+          >
+            <span className="block truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">{t('inventory.allProducts')}</span>
+            <span className="mt-1 block text-2xl font-black text-zinc-900 dark:text-zinc-100">{formatNumber(allProductCount)}</span>
+          </button>
+          {categorySummary.map((category: any) => (
+            <button
+              key={category.id}
+              type="button"
+              aria-pressed={categoryId === category.id}
+              onClick={() => {
+                setCategoryId(category.id)
+                setPage(1)
+              }}
+              className={`min-w-0 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${categoryId === category.id ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' : 'border-zinc-200 bg-white hover:border-amber-300 dark:border-zinc-800 dark:bg-[#121216] dark:hover:border-amber-700'}`}
+            >
+              <span className="block truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                {language === 'km' && category.nameKm ? category.nameKm : category.name}
+              </span>
+              <span className="mt-1 block text-2xl font-black text-zinc-900 dark:text-zinc-100">{formatNumber(category.productCount || 0)}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-[#121216] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full md:w-80">
+      <div className="bg-white dark:bg-[#121216] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs flex flex-col sm:flex-row sm:items-end gap-3">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -243,9 +291,10 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
-          <div className="w-full sm:w-44">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 w-full sm:w-auto">
+          <div className="w-full sm:w-64">
             <Select
+              label={t('reports.filterCategory')}
               options={categoryOptions}
               value={categoryId}
               onChange={(e) => {
@@ -255,7 +304,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
             />
           </div>
 
-          <div className="flex overflow-x-auto max-w-full rounded-lg border border-zinc-300 dark:border-zinc-700 text-xs">
+          <div className="flex min-h-10 overflow-x-auto max-w-full rounded-lg border border-zinc-300 dark:border-zinc-700 text-xs">
             {(['all', 'inStock', 'lowStock', 'outOfStock'] as const).map((s) => (
               <button
                 key={s}
@@ -275,117 +324,125 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
       </div>
 
       {/* Products Table */}
-      <div className="bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs min-w-[900px]">
-            <thead className="bg-zinc-50 dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
-              <tr>
-                <th className="px-4 py-3">{t('products.nameEn')}</th>
-                <th className="px-4 py-3">{t('products.category')}</th>
-                <th className="px-4 py-3">{t('products.unit')}</th>
-                <th className="px-4 py-3 text-right">{t('products.purchaseCost')}</th>
-                <th className="px-4 py-3 text-center">{t('products.physicalStock')}</th>
-                <th className="px-4 py-3 text-center">{t('products.reservedStock')}</th>
-                <th className="px-4 py-3 text-center font-bold text-amber-600 dark:text-amber-400">{t('dashboard.availableStock')}</th>
-                <th className="px-4 py-3 text-center">{t('products.status')}</th>
-                {userRole === 'ADMIN' && <th className="px-4 py-3 text-right">{t('common.actions')}</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={9} className="p-8 text-center text-gray-400">
-                    {t('common.loading')}
-                  </td>
-                </tr>
-              ) : productsList.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="p-8 text-center text-gray-400">
-                    {t('common.noRecords')}
-                  </td>
-                </tr>
-              ) : (
-                productsList.map((p) => {
-                  const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
-
-                  return (
-                    <tr key={p.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                            <Package className="w-3.5 h-3.5" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{displayName}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                        {language === 'km' && p.categoryNameKm ? p.categoryNameKm : p.categoryName}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                        <span className="font-medium capitalize">{getUnitText(p.unit, t)}</span>
-                        {p.altUnit && p.conversionRate && p.conversionRate > 1 && (
-                          <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-semibold font-khmer">
-                            1 {getUnitText(p.unit, t)} = {p.conversionRate} {getUnitText(p.altUnit, t)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-zinc-700 dark:text-zinc-300">
-                        {formatCurrency(p.purchaseCost)} / {getUnitText(p.unit, t)}
-                      </td>
-                      <td className="px-4 py-3 text-center font-medium text-zinc-600 dark:text-zinc-400">
-                        {formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}
-                      </td>
-                      <td className="px-4 py-3 text-center font-medium text-amber-600">
-                        {formatStockQuantity(p.reservedStock, p.unit, p.altUnit, p.conversionRate, t)}
-                      </td>
-                      <td className="px-4 py-3 text-center font-bold text-amber-600 dark:text-amber-400">
-                        {formatStockQuantity(p.availableStock, p.unit, p.altUnit, p.conversionRate, t)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge
-                          variant={
-                            p.availableStock <= 0
-                              ? 'danger'
-                              : p.availableStock <= p.minStock
-                              ? 'warning'
-                              : 'success'
-                          }
-                        >
-                          {p.availableStock <= 0
-                            ? t('products.outOfStock')
-                            : p.availableStock <= p.minStock
-                            ? t('products.lowStock')
-                            : t('products.inStock')}
-                        </Badge>
-                      </td>
-                      {userRole === 'ADMIN' && (
-                        <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
-                          <button
-                            onClick={() => handleOpenEdit(p)}
-                            className="p-1 rounded text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:text-amber-400 hover:bg-amber-400/10 dark:bg-amber-400/15"
-                            title={t('common.edit')}
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeactivate(p.id, p.name)}
-                            className="p-1 rounded text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50"
-                            title={t('common.delete')}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })
+      <ScrollableTable stickyActions={userRole === 'ADMIN'} stickyFirstColumn>
+        <table className="w-full text-left text-xs min-w-[1320px]">
+          <thead className="bg-zinc-50 dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
+            <tr>
+              <th className="whitespace-nowrap px-4 py-3 min-w-[220px]">{t('products.nameEn')}</th>
+              <th className="whitespace-nowrap px-4 py-3">{t('products.category')}</th>
+              <th className="whitespace-nowrap px-4 py-3">{t('products.unit')}</th>
+              <th className="whitespace-nowrap px-4 py-3">{t('products.conversionRule')}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right bg-blue-50/40 text-blue-900 dark:bg-blue-950/40 dark:text-blue-300">{t('products.availableStock')}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right bg-amber-50/40 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300">{t('products.customerLeftovers')}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-bold bg-emerald-50/40 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">{t('products.totalStock')}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-center">{t('common.status')}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">{t('products.purchaseCost')}</th>
+              {userRole === 'ADMIN' && (
+                <th className="sticky right-0 z-20 whitespace-nowrap px-4 py-3 text-right bg-zinc-50 dark:bg-[#18181D]">
+                  {t('common.actions')}
+                </th>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {isLoading ? (
+              <tr>
+                <td colSpan={userRole === 'ADMIN' ? 10 : 9} className="p-5 sm:p-8">
+                  <TableLoadingCard />
+                </td>
+              </tr>
+            ) : productsList.length === 0 ? (
+              <tr>
+                <td colSpan={userRole === 'ADMIN' ? 10 : 9} className="p-8 text-center text-gray-400">
+                  {t('common.noRecords')}
+                </td>
+              </tr>
+            ) : (
+              productsList.map((p) => {
+                const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
+
+                return (
+                  <tr key={p.id} className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                          <Package className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-zinc-900 dark:text-zinc-100 leading-snug">{displayName}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                      {language === 'km' && p.categoryNameKm ? p.categoryNameKm : p.categoryName}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                      <span className="font-medium capitalize">{getUnitText(p.unit, t)}</span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-zinc-600 dark:text-zinc-300">
+                      {p.altUnit && p.conversionRate && p.conversionRate > 1
+                        ? `1 ${getUnitText(p.unit, t)} = ${p.conversionRate} ${getUnitText(p.altUnit, t)}`
+                        : '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-blue-900 bg-blue-50/20 dark:bg-blue-950/20 dark:text-blue-300">
+                      {formatStockQuantity(p.availableStock, p.unit, p.altUnit, p.conversionRate, t)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-amber-800 bg-amber-50/20 dark:bg-amber-950/20 dark:text-amber-300">
+                      {formatStockQuantity(p.customerLeftoverStock, p.unit, p.altUnit, p.conversionRate, t)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-emerald-800 bg-emerald-50/20 dark:bg-emerald-950/20 dark:text-emerald-300">
+                      {formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                      <Badge
+                        variant={
+                          p.availableStock <= 0
+                            ? 'danger'
+                            : p.availableStock <= p.minStock
+                            ? 'warning'
+                            : 'success'
+                        }
+                      >
+                        {p.availableStock <= 0
+                          ? t('products.outOfStock')
+                          : p.availableStock <= p.minStock
+                          ? t('products.lowStock')
+                          : t('products.inStock')}
+                      </Badge>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-zinc-700 dark:text-zinc-300">
+                      {formatCurrency(p.purchaseCost)} / {getUnitText(p.unit, t)}
+                    </td>
+                    {userRole === 'ADMIN' && (
+                      <td className="sticky right-0 z-10 whitespace-nowrap px-4 py-3 text-right space-x-1 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
+                        <button
+                          onClick={() => handleOpenEdit(p)}
+                          className="p-1 rounded text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:text-amber-400 hover:bg-amber-400/10 dark:bg-amber-400/15"
+                          title={t('common.edit')}
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeactivate(p.id, p.name)}
+                          disabled={deletingId === p.id}
+                          className="p-1 rounded text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          title={t('common.delete')}
+                        >
+                          {deletingId === p.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500 inline-block" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </ScrollableTable>
 
       {/* Add / Edit Product Modal */}
       <Modal
@@ -496,7 +553,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                 onChange={(e) => setFormData({ ...formData, purchaseCost: e.target.value })}
               />
               {userRole !== 'ADMIN' && (
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">{t('products.priceConfiguredByCategory')}</p>
+                <p className="text-[15px] text-zinc-500 dark:text-zinc-400 mt-1">{t('products.priceConfiguredByCategory')}</p>
               )}
             </div>
           </div>

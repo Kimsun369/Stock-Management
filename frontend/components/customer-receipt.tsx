@@ -32,8 +32,8 @@ export function CustomerReceipt({ record }: CustomerReceiptProps) {
         {/* Header */}
         <div className="text-center pb-3 border-b border-dashed border-gray-300">
           <h2 className="text-sm font-bold tracking-wider text-black">KARAOKE & LOUNGE</h2>
-          <p className="text-[11px] font-semibold text-gray-600 mt-0.5">បង្កាន់ដៃផ្ញើទំនិញ / CUSTOMER LEFTOVER</p>
-          <p className="text-[10px] text-gray-500 mt-1">Phnom Penh, Cambodia</p>
+          <p className="text-[16.5px] font-semibold text-gray-600 mt-0.5">បង្កាន់ដៃផ្ញើទំនិញ / CUSTOMER LEFTOVER</p>
+          <p className="text-[15px] text-gray-500 mt-1">Phnom Penh, Cambodia</p>
         </div>
 
         {/* Info */}
@@ -84,20 +84,20 @@ export function CustomerReceipt({ record }: CustomerReceiptProps) {
 
         {/* Notes */}
         {record.notes && (
-          <div className="py-2 border-b border-dashed border-gray-300 text-[10px] text-gray-600">
+          <div className="py-2 border-b border-dashed border-gray-300 text-[15px] text-gray-600">
             <span className="font-semibold">Notes / ចំណាំ:</span> {record.notes}
           </div>
         )}
 
         {/* Terms */}
-        <div className="py-3 border-b border-dashed border-gray-300 text-[10px] text-gray-500 space-y-1 text-center">
+        <div className="py-3 border-b border-dashed border-gray-300 text-[15px] text-gray-500 space-y-1 text-center">
           <p>សូមបង្ហាញបង្កាន់ដៃនេះ ឬផ្ទៀងផ្ទាត់លេខទូរស័ព្ទពេលមកយកទំនិញ។</p>
           <p>Please present this receipt or verified phone number when collecting.</p>
           <p className="font-semibold text-gray-600">ទំនិញផ្ញើទុកបានរយៈពេលអតិបរមា ៣០ ថ្ងៃ (Items held max 30 days)</p>
         </div>
 
         {/* Signatures */}
-        <div className="pt-6 pb-2 grid grid-cols-2 gap-4 text-center text-[10px]">
+        <div className="pt-6 pb-2 grid grid-cols-2 gap-4 text-center text-[15px]">
           <div>
             <div className="border-b border-gray-400 mb-1 h-8" />
             <span className="text-gray-600">Staff / បុគ្គលិក</span>

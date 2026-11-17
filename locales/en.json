@@ -26,6 +26,7 @@
     "loading": "Loading...",
     "noRecords": "No records found",
     "language": "Language",
+    "selectCategory": "Select category",
     "english": "English",
     "khmer": "ខ្មែរ",
     "exportCsv": "Export CSV",
@@ -38,9 +39,17 @@
     "user": "User",
     "role": "Role",
     "success": "Operation completed successfully",
+    "created": "Created successfully",
+    "updated": "Updated successfully",
+    "deleted": "Deleted successfully",
+    "scrollHint": "Scroll horizontally to see more columns",
+    "scrollPrevious": "Previous columns",
+    "scrollNext": "Show next columns",
     "error": "An error occurred",
     "confirmDelete": "Are you sure you want to delete this record?",
-    "notSpecified": "Not specified"
+    "notSpecified": "Not specified",
+    "closeMenu": "Close menu",
+    "karaokeManagement": "Karaoke Management"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -59,7 +68,8 @@
     "users": "User Management",
     "auditLogs": "Activity Logs",
     "settings": "Settings",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "administration": "Administration"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -85,6 +95,8 @@
     "signInSubtitle": "Enter your credentials or use Google OAuth",
     "email": "Email Address",
     "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "signInButton": "Sign In",
     "signInWithGoogle": "Continue with Google",
     "or": "or",
@@ -131,7 +143,8 @@
     "categories": "Categories",
     "held": "Held",
     "partiallyCollected": "Partially Collected",
-    "fullyCollected": "Fully Collected"
+    "fullyCollected": "Fully Collected",
+    "recentTransactions": "Recent Transactions"
   },
   "products": {
     "title": "Product Management",
@@ -147,7 +160,9 @@
     "purchaseCost": "Purchase Cost ($)",
     "physicalStock": "Physical Stock",
     "reservedStock": "Reserved (Customer Held)",
+    "customerLeftovers": "Customer Leftovers",
     "availableStock": "Available Stock",
+    "totalStock": "Total Stock",
     "minStock": "Low Stock Alert Threshold",
     "description": "Description",
     "descriptionKm": "Khmer Description",
@@ -201,7 +216,9 @@
   },
   "inventory": {
     "title": "Inventory Ledger",
-    "subtitle": "Complete view of physical, reserved, and available stock",
+    "categorySummary": "Products by category",
+    "allProducts": "All products",
+    "subtitle": "View available stock, customer leftovers, and total stock",
     "physical": "Physical On-Hand",
     "reserved": "Reserved for Customers",
     "available": "Available Stock",
@@ -247,7 +264,7 @@
     "notes": "Notes",
     "availableWarning": "Warning: Available quantity is {available}",
     "insufficient": "Insufficient available stock! Physical: {physical}, Reserved: {reserved}, Available: {available}",
-    "insufficientDetailed": "Insufficient stock! Requested {requested} {unit}, but only {available} {unit} are available.",
+    "insufficientDetailed": "Insufficient stock! Requested {requested}, but only {available} are available.",
     "submit": "Confirm Remove Stock",
     "success": "Stock removed successfully!",
     "recentStockOut": "Recent Stock Deductions"
@@ -285,6 +302,13 @@
     "collectedQty": "Collected Qty",
     "remainingQty": "Remaining Qty",
     "collectNow": "Collect Items",
+    "cancelRecord": "Cancel record",
+    "cancelTitle": "Cancel customer leftovers?",
+    "cancelMessage": "This will cancel the remaining items in this record. You can’t undo this action.",
+    "cancelReason": "Reason for cancellation",
+    "cancelReasonPlaceholder": "Add a reason (optional)",
+    "optional": "optional",
+    "cancelConfirm": "Cancel record",
     "quantityToCollect": "Quantity to Collect Now",
     "verifyIdentity": "Verify customer identity before releasing items",
     "heldNotice": "Held items are reserved and cannot be sold in regular stock.",
@@ -378,14 +402,10 @@
     "resultingQty": "Resulting Quantity",
     "reason": "Reason for Discrepancy",
     "notes": "Supporting Evidence / Notes",
-    "status": "Request Status",
-    "submittedBy": "Submitted By",
-    "reviewedBy": "Reviewed By",
-    "approve": "Approve Adjustment",
-    "reject": "Reject Request",
+    "status": "Stock Status",
+    "submittedBy": "Changed By",
     "statuses": {
-      "PENDING": "Pending Approval",
-      "APPROVED": "Applied",
+      "APPLIED": "Applied",
       "REJECTED": "Rejected"
     }
   },
@@ -418,6 +438,7 @@
       "cannotDeleteSelf": "You cannot delete the account you are currently using.",
       "cannotDeleteMainAdmin": "The main Google verified administrator account cannot be deleted.",
       "cannotChangeMainAdmin": "The main Google administrator must keep its Google email, administrator role, and active status.",
+      "cannotResetAdminPassword": "Only the Google main administrator can reset another administrator’s password.",
       "lastAdmin": "At least one active administrator must remain.",
       "invalidRole": "Choose a valid account role.",
       "unauthorized": "Your session has expired. Sign in again and retry.",

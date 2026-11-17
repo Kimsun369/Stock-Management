@@ -1,6 +1,6 @@
 export type Role = 'ADMIN' | 'STAFF'
 export type LeftoverStatus = 'HELD' | 'PARTIALLY_COLLECTED' | 'FULLY_COLLECTED' | 'CANCELLED'
-export type AdjustmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type AdjustmentStatus = 'APPLIED' | 'REJECTED'
 export type TransactionType = 'STOCK_IN' | 'STOCK_OUT' | 'RETURN' | 'ADJUSTMENT' | 'CUSTOMER_RESERVE' | 'CUSTOMER_COLLECT'
 
 export interface User {
@@ -67,6 +67,7 @@ export interface Product {
 
 export interface ProductWithDetails extends Product {
   availableStock: number
+  customerLeftoverStock: number
   categoryName?: string
   categoryNameKm?: string
   supplierName?: string
@@ -203,6 +204,7 @@ export interface DashboardMetrics {
   totalCategories: number
   totalAvailableStock: number
   totalReservedStock: number
+  customerHeldUnits: number
   lowStockCount: number
   outOfStockCount: number
   monthlyStockIn: number

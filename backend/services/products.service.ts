@@ -10,16 +10,24 @@ export async function getProducts(filters?: {
   page?: number
   limit?: number
 }): Promise<{ products: ProductWithDetails[]; total: number; page: number; totalPages: number }> {
-  const [productRows, categoryRows, supplierRows] = await Promise.all([
+  const [productRows, categoryRows, supplierRows, customerItemRows] = await Promise.all([
     getAllRows(SHEETS.Products),
     getAllRows(SHEETS.Categories),
     getAllRows(SHEETS.Suppliers),
+    getAllRows(SHEETS.CustomerItems),
   ])
 
   const catMap = new Map(categoryRows.map((c) => [c.id, c]))
   const beerIds = beerCategoryIds(categoryRows)
   const canonicalBeerId = canonicalBeerCategoryId(categoryRows)
   const supMap = new Map(supplierRows.map((s) => [s.id, s.name]))
+  const leftoverTotals = new Map<string, number>()
+  for (const item of customerItemRows) {
+    const remaining = Number(item.remainingQuantity) || 0
+    if (remaining > 0) {
+      leftoverTotals.set(item.productId, (leftoverTotals.get(item.productId) || 0) + remaining)
+    }
+  }
 
   let list: ProductWithDetails[] = productRows.map((p) => {
     const cat = catMap.get(p.categoryId)
@@ -41,6 +49,7 @@ export async function getProducts(filters?: {
       purchaseCost: configuredPurchaseCost(p, units),
       physicalStock: physical,
       reservedStock: reserved,
+      customerLeftoverStock: leftoverTotals.get(p.id) || 0,
       availableStock: available,
       minStock: Number(p.minStock) || 5,
       defaultSupplierId: p.defaultSupplierId || '',
@@ -102,10 +111,11 @@ export async function getProducts(filters?: {
 }
 
 export async function getProductById(id: string): Promise<ProductWithDetails | null> {
-  const [productRows, categoryRows, supplierRows] = await Promise.all([
+  const [productRows, categoryRows, supplierRows, customerItemRows] = await Promise.all([
     getAllRows(SHEETS.Products),
     getAllRows(SHEETS.Categories),
     getAllRows(SHEETS.Suppliers),
+    getAllRows(SHEETS.CustomerItems),
   ])
 
   const p = productRows.find((row) => row.id === id || row.sku === id)
@@ -118,6 +128,9 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
 
   const physical = Number(p.physicalStock) || 0
   const reserved = Number(p.reservedStock) || 0
+  const customerLeftoverStock = customerItemRows.reduce((total, item) => (
+    item.productId === p.id ? total + Math.max(0, Number(item.remainingQuantity) || 0) : total
+  ), 0)
 
   return {
     id: p.id,
@@ -132,6 +145,7 @@ export async function getProductById(id: string): Promise<ProductWithDetails | n
     purchaseCost: configuredPurchaseCost(p, units),
     physicalStock: physical,
     reservedStock: reserved,
+    customerLeftoverStock,
     availableStock: Math.max(0, physical - reserved),
     minStock: Number(p.minStock) || 5,
     defaultSupplierId: p.defaultSupplierId || '',
@@ -236,6 +250,7 @@ export async function createProduct(
     purchaseCost: Number(purchaseCost),
     physicalStock: 0,
     reservedStock: 0,
+    customerLeftoverStock: 0,
     minStock: Number(minStock),
     defaultSupplierId: data.defaultSupplierId || '',
     description: data.description || '',

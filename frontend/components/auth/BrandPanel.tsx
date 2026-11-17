@@ -138,7 +138,7 @@ export function BrandPanel({ activeSuite, onSelectSuite }: BrandPanelProps) {
           <button
             type="button"
             onClick={() => onSelectSuite('gold')}
-            className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-tight transition-all duration-300 ${
+            className={`px-3 py-1 rounded-full text-[16.5px] font-bold tracking-tight transition-all duration-300 ${
               activeSuite === 'gold'
                 ? 'bg-gradient-to-r from-[#F5D78E] via-[#E8B84A] to-[#C9962B] text-[#0A0A0B] shadow-[0_2px_8px_rgba(232,184,74,0.4)]'
                 : 'text-[#A8A29A] hover:text-[#F4F1EA] hover:bg-white/5'
@@ -149,7 +149,7 @@ export function BrandPanel({ activeSuite, onSelectSuite }: BrandPanelProps) {
           <button
             type="button"
             onClick={() => onSelectSuite('ruby')}
-            className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-tight transition-all duration-300 ${
+            className={`px-3 py-1 rounded-full text-[16.5px] font-bold tracking-tight transition-all duration-300 ${
               activeSuite === 'ruby'
                 ? 'bg-gradient-to-r from-rose-400 via-rose-500 to-rose-600 text-white shadow-[0_2px_8px_rgba(225,29,72,0.4)]'
                 : 'text-[#A8A29A] hover:text-[#F4F1EA] hover:bg-white/5'
@@ -214,7 +214,7 @@ export function BrandPanel({ activeSuite, onSelectSuite }: BrandPanelProps) {
         <span className="font-khmer">
           &copy; {new Date().getFullYear()} ភោជនីយដ្ឋាននាគមាសសន្តិភាព2
         </span>
-        <span className="text-[#E8B84A] font-bold tracking-wider text-[11px]">v2.0 Gold</span>
+        <span className="text-[#E8B84A] font-bold tracking-wider text-[16.5px]">v2.0 Gold</span>
       </div>
     </div>
   )

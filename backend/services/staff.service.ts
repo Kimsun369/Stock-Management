@@ -91,7 +91,8 @@ export async function updateStaffUser(
     password?: string
   },
   adminUserId: string,
-  adminUserName: string
+  adminUserName: string,
+  adminUserEmail: string
 ): Promise<void> {
   const users = await getAllRows(SHEETS.Users)
   const user = users.find((u) => u.id === id)
@@ -100,6 +101,9 @@ export async function updateStaffUser(
     (data.email !== undefined && data.email.toLowerCase().trim() !== SUPER_ADMIN_EMAIL) ||
     data.role === 'STAFF' || data.active === false
   )) throw new Error('CANNOT_CHANGE_MAIN_ADMIN')
+  if (data.password && user.role === 'ADMIN' && adminUserEmail.toLowerCase().trim() !== SUPER_ADMIN_EMAIL) {
+    throw new Error('CANNOT_RESET_ADMIN_PASSWORD')
+  }
   const removesLastActiveAdmin = user.role === 'ADMIN' && user.active === 'true' &&
     (data.active === false || data.role === 'STAFF') &&
     users.filter((item) => item.role === 'ADMIN' && item.active === 'true').length <= 1
@@ -159,6 +163,8 @@ export async function deleteStaffUser(
     throw new Error('CANNOT_DELETE_LAST_ADMIN')
   }
 
+  // Transaction, adjustment, leftover, and audit rows keep this user ID as an
+  // immutable historical reference; deleting access must not roll back activity.
   await deleteRowById(SHEETS.Users, id)
 
   await appendAuditLog({
