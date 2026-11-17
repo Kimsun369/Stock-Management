@@ -76,7 +76,7 @@ export function LoginCard() {
   }
 
   return (
-    <div className="w-full max-w-[440px] card-glass-gold p-7 sm:p-10 shadow-2xl relative">
+          <div className="flex flex-col items-center justify-center min-h-screen w-full max-w-md mx-auto card-glass-gold p-6 sm:p-8 shadow-2xl">
       {/* 1. Header with Authentic Official Business Logo (No AI star icons) */}
       <div className="text-center mb-7 fade-up-1">
         <div className="flex items-center justify-center mb-3">
@@ -122,7 +122,7 @@ export function LoginCard() {
       )}
 
       {/* 2. Login Form with Generous, Highly Legible Floating Label Inputs */}
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
         {/* Email Field with Floating Label */}
         <div className="relative fade-up-2">
           <div className="relative">
@@ -132,7 +132,7 @@ export function LoginCard() {
               type="email"
               autoComplete="email"
               placeholder=" "
-              className={`floating-input peer w-full h-13 px-4 pt-4 text-sm sm:text-base rounded-xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 placeholder-transparent focus:ring-2 focus:ring-[#E8B84A]/30 ${
+              className={`floating-input peer w-full h-14 px-4 pt-5 text-xs sm:text-sm rounded-xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 placeholder-transparent focus:ring-2 focus:ring-[#E8B84A]/30 ${
                 errors.email
                   ? 'border-rose-400 focus:border-rose-500'
                   : 'border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] focus:border-[#E8B84A]'
@@ -140,7 +140,7 @@ export function LoginCard() {
             />
             <label
               htmlFor="staff-email"
-              className="floating-label absolute left-4 top-4 text-sm text-[#78716C] dark:text-[#A8A29A] font-semibold pointer-events-none transition-all duration-200 font-khmer"
+              className="floating-label absolute left-4 top-4 text-xs text-[#78716C] dark:text-[#A8A29A] font-semibold pointer-events-none transition-all duration-200 font-khmer"
             >
               {t('auth.email')}
             </label>
@@ -159,7 +159,7 @@ export function LoginCard() {
               type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder=" "
-              className={`floating-input peer w-full h-13 px-4 pr-12 pt-4 text-sm sm:text-base rounded-xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 placeholder-transparent focus:ring-2 focus:ring-[#E8B84A]/30 ${
+              className={`floating-input peer w-full h-14 px-4 pr-12 pt-5 text-xs sm:text-sm rounded-xl bg-white/70 dark:bg-[#111113]/80 border text-[#1C1917] dark:text-[#F4F1EA] outline-none transition-all duration-200 placeholder-transparent focus:ring-2 focus:ring-[#E8B84A]/30 ${
                 errors.password
                   ? 'border-rose-400 focus:border-rose-500'
                   : 'border-[rgba(201,150,43,0.3)] dark:border-[rgba(232,184,74,0.25)] focus:border-[#E8B84A]'
@@ -167,7 +167,7 @@ export function LoginCard() {
             />
             <label
               htmlFor="staff-password"
-              className="floating-label absolute left-4 top-4 text-sm text-[#78716C] dark:text-[#A8A29A] font-semibold pointer-events-none transition-all duration-200 font-khmer"
+              className="floating-label absolute left-4 top-4 text-xs text-[#78716C] dark:text-[#A8A29A] font-semibold pointer-events-none transition-all duration-200 font-khmer"
             >
               {t('auth.password')}
             </label>
