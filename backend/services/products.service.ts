@@ -1,4 +1,4 @@
-import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
+import { getAllRows, appendRow, updateRowById, deleteRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
 import { Product, ProductWithDetails } from '@/backend/types'
 import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 import { beerCategoryIds, canonicalBeerCategoryId } from '@/backend/category-utils'
@@ -313,15 +313,16 @@ export async function deactivateProduct(id: string, userId: string, userName: st
   const product = await getProductById(id)
   if (!product) throw new Error('PRODUCT_NOT_FOUND')
 
-  await updateRowById(SHEETS.Products, id, { active: 'false' })
+  // Hard-delete: physically remove the row from the sheet
+  await deleteRowById(SHEETS.Products, id)
 
   await appendAuditLog({
     actorId: userId,
     actorName: userName,
-    action: 'PRODUCT_DEACTIVATED',
+    action: 'PRODUCT_DELETED',
     entityType: 'Product',
     entityId: id,
-    details: `Deactivated product "${product.name}"`,
+    details: `Deleted product "${product.name}"`,
   })
 }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/backend/auth'
 import { recordCustomerCollection } from '@/backend/services/leftovers.service'
+import { leftoverCollectSchema } from '@/lib/validations'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,12 +10,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
 
     const { id } = await params
-    const body = await req.json()
+    const json = await req.json()
+    const parsed = leftoverCollectSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 })
+    }
 
     const result = await recordCustomerCollection({
       recordId: id,
-      collections: body.collections || [],
-      notes: body.notes,
+      collections: parsed.data.collections,
+      notes: parsed.data.notes,
       userId: session.user.id,
       userName: session.user.name || 'Staff',
     })
@@ -25,4 +30,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: error.message }, { status: isClientError ? 400 : 500 })
   }
 }
-

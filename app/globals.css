@@ -291,89 +291,43 @@ button, input, select, textarea, table, th, td, span, p, h1, h2, h3, h4 {
   animation: scrollNoticeNudge 1.1s ease-in-out 3;
 }
 
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] thead th.sticky.right-0,
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] tbody td.sticky.right-0 {
-  position: sticky;
-  isolation: isolate;
-  border-left: 2px solid rgba(24, 24, 27, 0.82);
-  box-shadow: -18px 0 30px -2px rgba(0, 0, 0, 0.62);
-}
-
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] thead th.sticky.right-0::before,
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] tbody td.sticky.right-0::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 100%;
-  bottom: 0;
-  width: 28px;
-  pointer-events: none;
-  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.24));
-}
-
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] thead th.sticky.right-0::before {
-  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.18));
-}
-
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] thead th.sticky.right-0,
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] tbody td.sticky.right-0 {
-  border-left-color: rgba(161, 161, 170, 0.5);
-  box-shadow: -18px 0 30px -2px rgba(0, 0, 0, 0.82);
-}
-
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] tbody td.sticky.right-0::before,
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-actions='true'] thead th.sticky.right-0::before {
-  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.42));
-}
-
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] thead th:first-child,
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] tbody td:first-child {
+/* Sticky first column — always active on all devices */
+.scrollable-table-frame[data-sticky-first-column='true'] thead th:first-child,
+.scrollable-table-frame[data-sticky-first-column='true'] tbody td:first-child {
   position: sticky;
   left: 0;
   isolation: isolate;
   background-color: #fff;
-  box-shadow: 10px 0 18px -12px rgba(0, 0, 0, 0.38);
+  border-right: 1px solid rgba(228, 228, 231, 0.9);
+  box-shadow: 6px 0 12px -4px rgba(0, 0, 0, 0.08);
 }
 
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] thead th:first-child {
+.scrollable-table-frame[data-sticky-first-column='true'] thead th:first-child {
   z-index: 20;
   background-color: #fafafa;
 }
 
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] tbody td:first-child {
+.scrollable-table-frame[data-sticky-first-column='true'] tbody td:first-child {
   z-index: 10;
 }
 
-.scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] tbody tr:hover td:first-child {
+.scrollable-table-frame[data-sticky-first-column='true'] tbody tr:hover td:first-child {
   background-color: #fafafa;
 }
 
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] thead th:first-child {
+.dark .scrollable-table-frame[data-sticky-first-column='true'] thead th:first-child {
   background-color: #18181d;
+  border-right-color: rgba(39, 39, 42, 0.9);
 }
 
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] tbody td:first-child {
+.dark .scrollable-table-frame[data-sticky-first-column='true'] tbody td:first-child {
   background-color: #121216;
-  box-shadow: 10px 0 18px -12px rgba(0, 0, 0, 0.8);
+  border-right-color: rgba(39, 39, 42, 0.9);
+  box-shadow: 6px 0 12px -4px rgba(0, 0, 0, 0.4);
 }
 
-.dark .scrollable-table-frame[data-has-overflow='true'][data-sticky-first-column='true'] tbody tr:hover td:first-child {
+.dark .scrollable-table-frame[data-sticky-first-column='true'] tbody tr:hover td:first-child {
   background-color: #191920;
-}
-
-@media (max-width: 1023px) {
-  .scrollable-table-frame[data-sticky-actions='true'] thead th.sticky.right-0,
-  .scrollable-table-frame[data-sticky-actions='true'] tbody td.sticky.right-0 {
-    position: static !important;
-    right: auto !important;
-    border-left: 0 !important;
-    box-shadow: none !important;
-  }
-
-  .scrollable-table-frame[data-sticky-actions='true'] thead th.sticky.right-0::before,
-  .scrollable-table-frame[data-sticky-actions='true'] tbody td.sticky.right-0::before {
-    display: none;
-  }
 }
 
 /* Subtle Film Grain */

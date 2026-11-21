@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/backend/auth'
 import { cancelCustomerLeftover } from '@/backend/services/leftovers.service'
+import { leftoverCancelSchema } from '@/lib/validations'
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,11 +11,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 })
 
     const { id } = await params
-    const body = await req.json()
+    const json = await req.json().catch(() => ({}))
+    const parsed = leftoverCancelSchema.safeParse(json)
+    const reason = parsed.success && parsed.data.reason ? parsed.data.reason : 'Admin cancelled leftover'
 
     await cancelCustomerLeftover({
       recordId: id,
-      reason: body.reason || 'Admin cancelled leftover',
+      reason,
       userId: session.user.id,
       userName: session.user.name || 'Admin',
     })
@@ -24,4 +27,3 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
-

@@ -86,7 +86,7 @@ export function ScrollableTable({
       >
         <div
           className={cn(
-            'pointer-events-none absolute left-0 top-0 bottom-0 z-30 w-[2px] bg-black/10 shadow-[14px_0_18px_0_rgba(0,0,0,0.55)] dark:bg-white/10 dark:shadow-[14px_0_18px_0_rgba(0,0,0,0.8)] transition-opacity duration-300',
+            'pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-4 bg-gradient-to-r from-black/5 to-transparent dark:from-white/5 transition-opacity duration-300',
             canScrollLeft ? 'opacity-100' : 'opacity-0'
           )}
           aria-hidden="true"
@@ -94,7 +94,7 @@ export function ScrollableTable({
         {!stickyActions && (
           <div
             className={cn(
-              'pointer-events-none absolute right-0 top-0 bottom-0 z-30 w-6 bg-gradient-to-l from-black/25 to-transparent shadow-[-16px_0_24px_0_rgba(0,0,0,0.55)] dark:from-white/20 dark:shadow-[-16px_0_24px_0_rgba(0,0,0,0.8)] transition-opacity duration-300',
+              'pointer-events-none absolute right-0 top-0 bottom-0 z-20 w-4 bg-gradient-to-l from-black/5 to-transparent dark:from-white/5 transition-opacity duration-300',
               canScrollRight ? 'opacity-100' : 'opacity-0'
             )}
             aria-hidden="true"

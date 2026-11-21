@@ -199,18 +199,18 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
       </div>
 
       {/* Table */}
-      <ScrollableTable stickyActions={userRole === 'ADMIN'}>
+      <ScrollableTable>
         <table className="w-full text-left text-xs min-w-[1050px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="whitespace-nowrap px-5 py-3">{t('customerLeftovers.receiptNumber')}</th>
+              <th className="w-px whitespace-nowrap px-3.5 py-3">{t('customerLeftovers.receiptNumber')}</th>
               <th className="whitespace-nowrap px-4 py-3 min-w-[160px]">{t('customerLeftovers.customerName')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('customerLeftovers.customerPhone')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('customerLeftovers.storageLocation')}</th>
               <th className="whitespace-nowrap px-3 py-3 text-center">{t('customerLeftovers.remainingQty')}</th>
               <th className="whitespace-nowrap px-3 py-3">{t('common.status')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('common.date')}</th>
-              <th className="sticky right-0 z-20 whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
+              <th className="whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
                 {t('common.actions')}
               </th>
             </tr>
@@ -231,7 +231,7 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
             ) : (
               data.records.map((r: CustomerRecordWithItems) => (
                 <tr key={r.id} className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="whitespace-nowrap px-5 py-3 font-mono font-semibold text-blue-600">{r.recordNumber}</td>
+                  <td className="w-px whitespace-nowrap px-3.5 py-3 font-mono font-semibold text-blue-600">{r.recordNumber}</td>
                   <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-900 dark:text-zinc-100">{r.customerName}</td>
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-600 dark:text-zinc-300">{r.phoneDisplay}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-zinc-400">{r.storageLocation || 'Main Storage'}</td>
@@ -261,7 +261,7 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
                     </Badge>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-gray-400">{formatDate(r.createdAt)}</td>
-                  <td className="sticky right-0 z-10 whitespace-nowrap px-4 py-3 text-right space-x-2 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
+                  <td className="whitespace-nowrap px-4 py-3 text-right space-x-2 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
                     <button
                       onClick={() => handleOpenReceipt(r)}
                       className="p-1 rounded text-gray-500 dark:text-zinc-400 hover:text-blue-600 hover:bg-blue-50"

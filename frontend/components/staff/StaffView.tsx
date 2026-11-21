@@ -130,7 +130,7 @@ export function StaffView() {
       {notice && <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">{notice}<button className="ml-3 underline" onClick={() => setNotice(null)}>{t('staff.dismiss')}</button></div>}
 
       {/* Staff Table */}
-      <ScrollableTable stickyActions={userRole === 'ADMIN'}>
+      <ScrollableTable >
         <table className="w-full min-w-[850px] text-left text-xs">
           <thead className="border-b bg-[#F8FAFC] dark:bg-[#18181D] font-semibold text-gray-500 dark:text-zinc-400">
             <tr>
@@ -138,7 +138,7 @@ export function StaffView() {
               <th className="whitespace-nowrap px-4 py-3">{t('staff.email')}</th>
               <th className="whitespace-nowrap px-3 py-3">{t('staff.role')}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('common.date')}</th>
-              <th className="sticky right-0 z-20 whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
+              <th className="whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
                 {t('common.actions')}
               </th>
             </tr>
@@ -163,7 +163,7 @@ export function StaffView() {
                   </Badge>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-gray-400">{formatDate(user.createdAt)}</td>
-                <td className="sticky right-0 z-10 whitespace-nowrap px-4 py-3 text-right bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
+                <td className="whitespace-nowrap px-4 py-3 text-right bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
                   <div className="inline-flex items-center gap-1">
                     <Button variant="outline" size="sm" onClick={() => setDetailUser(user)} title={t('common.view')}><Eye className="h-3.5 w-3.5" /></Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(user)} title={t('common.edit')}><Pencil className="h-3.5 w-3.5" /></Button>

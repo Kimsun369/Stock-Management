@@ -324,7 +324,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
       </div>
 
       {/* Products Table */}
-      <ScrollableTable stickyActions={userRole === 'ADMIN'} stickyFirstColumn>
+      <ScrollableTable stickyFirstColumn>
         <table className="w-full text-left text-xs min-w-[1320px]">
           <thead className="bg-zinc-50 dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
             <tr>
@@ -338,7 +338,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
               <th className="whitespace-nowrap px-4 py-3 text-center">{t('common.status')}</th>
               <th className="whitespace-nowrap px-4 py-3 text-right">{t('products.purchaseCost')}</th>
               {userRole === 'ADMIN' && (
-                <th className="sticky right-0 z-20 whitespace-nowrap px-4 py-3 text-right bg-zinc-50 dark:bg-[#18181D]">
+                <th className="whitespace-nowrap px-4 py-3 text-right bg-zinc-50 dark:bg-[#18181D]">
                   {t('common.actions')}
                 </th>
               )}
@@ -414,7 +414,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
                       {formatCurrency(p.purchaseCost)} / {getUnitText(p.unit, t)}
                     </td>
                     {userRole === 'ADMIN' && (
-                      <td className="sticky right-0 z-10 whitespace-nowrap px-4 py-3 text-right space-x-1 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
+                      <td className="whitespace-nowrap px-4 py-3 text-right space-x-1 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
                         <button
                           onClick={() => handleOpenEdit(p)}
                           className="p-1 rounded text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:text-amber-400 hover:bg-amber-400/10 dark:bg-amber-400/15"

@@ -103,11 +103,11 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
       </div>
 
       {/* Adjustments Table */}
-      <ScrollableTable>
+      <ScrollableTable stickyFirstColumn>
         <table className="w-full text-left text-xs min-w-[960px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="whitespace-nowrap px-5 py-3 min-w-[180px]">{t('adjustments.product')}</th>
+              <th className="w-px whitespace-nowrap px-3.5 py-3">{t('adjustments.product')}</th>
               <th className="whitespace-nowrap px-3 py-3 text-right">{t('adjustments.currentQty')}</th>
               <th className="whitespace-nowrap px-3 py-3 text-right">{t('adjustments.requestedChange')}</th>
               <th className="whitespace-nowrap px-4 py-3 min-w-[200px]">{t('products.description')}</th>
@@ -131,7 +131,7 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
             ) : (
               (adjustments || []).map((adj) => (
                 <tr key={adj.id} onClick={() => setDetailAdjustment(adj)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setDetailAdjustment(adj) }} tabIndex={0} role="button" aria-label={`${t('common.view')} ${adj.productName}`} className="cursor-pointer hover:bg-zinc-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 dark:hover:bg-zinc-800/40 transition-colors">
-                  <td className="whitespace-nowrap px-5 py-3 font-semibold text-gray-900 dark:text-zinc-100">{adj.productName}</td>
+                  <td className="w-px whitespace-nowrap px-3.5 py-3 font-semibold text-gray-900 dark:text-zinc-100">{adj.productName}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-right text-gray-600 dark:text-zinc-300 font-mono">
                     {formatStockQuantity(adj.currentQuantity, adj.productUnit, adj.productAltUnit, adj.productConversionRate, t)}
                   </td>

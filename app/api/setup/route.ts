@@ -1,30 +1,48 @@
 import { NextResponse } from 'next/server'
-import { getAllRows, appendRow, initializeSheets, SHEETS, generateId } from '@/backend/sheets'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
+import { getAllRows, appendRow, initializeSheets, SHEETS, generateId } from '@/backend/sheets'
 
 export async function POST(req: Request) {
   try {
-    await initializeSheets()
-
-    const users = await getAllRows(SHEETS.Users)
     const setupSecret = process.env.SETUP_SECRET
     const authHeader = req.headers.get('x-setup-secret')
 
-    // If users already exist and no matching setup secret, forbid
-    if (users.length > 0 && (!setupSecret || authHeader !== setupSecret)) {
+    // Always require SETUP_SECRET to be configured and provided
+    if (!setupSecret || !authHeader) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    // Constant-time comparison
+    const secretBuf = Buffer.from(setupSecret)
+    const headerBuf = Buffer.from(authHeader)
+    if (secretBuf.length !== headerBuf.length || !crypto.timingSafeEqual(secretBuf, headerBuf)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    await initializeSheets()
+    const users = await getAllRows(SHEETS.Users)
+
+    // Once any active admin exists, permanently deny access
+    const hasAdmin = users.some((u) => u.role === 'ADMIN' && u.active === 'true')
+    if (hasAdmin) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const email = process.env.INITIAL_ADMIN_EMAIL?.toLowerCase().trim()
+    const password = process.env.INITIAL_ADMIN_PASSWORD
+    const name = process.env.INITIAL_ADMIN_NAME || 'System Administrator'
+
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Admin already initialized. Provide valid x-setup-secret to create another.' },
-        { status: 403 }
+        { error: 'INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD environment variables must be configured' },
+        { status: 500 }
       )
     }
 
-    const email = process.env.INITIAL_ADMIN_EMAIL || 'povmesa97@gmail.com'
-    const password = process.env.INITIAL_ADMIN_PASSWORD || 'AdminPassword123!'
-    const name = process.env.INITIAL_ADMIN_NAME || 'Mesa Pov'
-
-    // Check if admin already exists
-    if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return NextResponse.json({ message: 'Admin account already exists', email })
+    // Check if user with that email already exists
+    if (users.some((u) => u.email.toLowerCase() === email)) {
+      return NextResponse.json({ error: 'User already exists' }, { status: 400 })
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -34,7 +52,7 @@ export async function POST(req: Request) {
     await appendRow(SHEETS.Users, [
       id,
       name,
-      email.toLowerCase().trim(),
+      email,
       hashedPassword,
       'ADMIN',
       'km',
@@ -47,7 +65,6 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: 'Initial Admin account created successfully',
-      email,
     })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Setup failed' }, { status: 500 })

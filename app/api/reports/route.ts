@@ -17,6 +17,10 @@ export async function GET(req: Request) {
     const categoryId = searchParams.get('categoryId') || undefined
     const supplierId = searchParams.get('supplierId') || undefined
 
+    if (type === 'purchases' && session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 })
+    }
+
     if (format === 'csv') {
       const csv = await generateCsvReport({
         type,

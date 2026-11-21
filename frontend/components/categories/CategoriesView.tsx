@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { Plus, Edit2, Trash2, Tags, DollarSign } from 'lucide-react'
+import { Plus, Edit2, Trash2, Tags, DollarSign, Loader2 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { useToast } from '@/components/ui/toast'
 import { Category } from '@/backend/types'
@@ -138,7 +138,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
       )}
 
       {/* Categories Table */}
-      <ScrollableTable stickyActions={userRole === 'ADMIN'} stickyFirstColumn>
+      <ScrollableTable stickyFirstColumn>
         <table className="w-full text-left text-xs min-w-[600px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
@@ -146,7 +146,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
               <th className="whitespace-nowrap px-4 py-3 min-w-[200px]">{t('categories.description')}</th>
               <th className="whitespace-nowrap px-3 py-3 text-center">{t('categories.productCount')}</th>
               {userRole === 'ADMIN' && (
-                <th className="sticky right-0 z-20 whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
+                <th className="whitespace-nowrap px-4 py-3 text-right bg-[#F8FAFC] dark:bg-[#18181D]">
                   {t('common.actions')}
                 </th>
               )}
@@ -179,7 +179,7 @@ export function CategoriesView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'S
                   <td className="whitespace-nowrap px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.description || '—'}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-center font-semibold text-amber-600 dark:text-amber-400">{c.productCount || 0}</td>
                   {userRole === 'ADMIN' && (
-                    <td className="sticky right-0 z-10 whitespace-nowrap px-4 py-3 text-right space-x-1 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
+                    <td className="whitespace-nowrap px-4 py-3 text-right space-x-1 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
                       <button
                         onClick={() => handleOpenEdit(c)}
                         className="p-1.5 rounded text-zinc-500 dark:text-zinc-400 hover:text-amber-600 dark:text-amber-400 hover:bg-amber-400/10 dark:bg-amber-400/15"

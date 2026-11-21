@@ -7,6 +7,7 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "seed": "CONFIRM_SEED=yes tsx scripts/seed.ts",
     "check-i18n": "node scripts/check-i18n.js",
     "test-phone": "node scripts/test-phone.js"
   },

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/backend/auth'
 import { recordStockOut, getStockLedger } from '@/backend/services/inventory.service'
+import { stockOutSchema } from '@/lib/validations'
 
 export async function GET(req: Request) {
   try {
@@ -25,9 +26,14 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
 
-    const body = await req.json()
+    const json = await req.json()
+    const parsed = stockOutSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 })
+    }
+
     const result = await recordStockOut({
-      ...body,
+      ...parsed.data,
       userId: session.user.id,
       userName: session.user.name || 'Staff',
     })
@@ -38,4 +44,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status })
   }
 }
-

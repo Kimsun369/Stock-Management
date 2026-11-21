@@ -117,11 +117,11 @@ export function InventoryLedgerView() {
       </div>
 
       {/* Inventory Table */}
-      <ScrollableTable>
+      <ScrollableTable stickyFirstColumn>
         <table className="w-full text-left text-xs min-w-[1050px]">
           <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-gray-500 dark:text-zinc-400 font-semibold border-b">
             <tr>
-              <th className="whitespace-nowrap px-4 py-3 min-w-[220px]">{language === 'km' ? 'ឈ្មោះផលិតផល' : 'Product Name'}</th>
+              <th className="sticky left-0 z-20 w-px whitespace-nowrap px-3.5 py-3 bg-[#F8FAFC] dark:bg-[#18181D]">{language === 'km' ? 'ឈ្មោះផលិតផល' : 'Product Name'}</th>
               <th className="whitespace-nowrap px-4 py-3">{language === 'km' ? 'ប្រភេទ' : 'Category'}</th>
               <th className="whitespace-nowrap px-4 py-3">{t('products.conversionRule')}</th>
               <th className="whitespace-nowrap px-4 py-3 text-right bg-blue-50/40 text-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
@@ -133,7 +133,7 @@ export function InventoryLedgerView() {
               <th className="whitespace-nowrap px-4 py-3 text-right bg-emerald-50/40 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                 {t('products.totalStock')}
               </th>
-              <th className="whitespace-nowrap px-4 py-3 text-center">{t('common.status')}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-center bg-[#F8FAFC] dark:bg-[#18181D]">{t('common.status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -153,8 +153,8 @@ export function InventoryLedgerView() {
               products.map((p) => {
                 const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
                 return (
-                  <tr key={p.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
-                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-900 dark:text-zinc-100">{displayName}</td>
+                  <tr key={p.id} className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                    <td className="sticky left-0 z-10 w-px whitespace-nowrap px-3.5 py-3 font-semibold text-gray-900 dark:text-zinc-100 bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">{displayName}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-zinc-400">
                       {language === 'km' && p.categoryNameKm ? p.categoryNameKm : p.categoryName}
                     </td>
@@ -172,7 +172,7 @@ export function InventoryLedgerView() {
                     <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-emerald-800 bg-emerald-50/20 dark:bg-emerald-950/20 dark:text-emerald-300">
                       {formatStockQuantity(p.physicalStock, p.unit, p.altUnit, p.conversionRate, t)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <td className="whitespace-nowrap px-4 py-3 text-center bg-white dark:bg-[#121216] group-hover:bg-zinc-50/90 dark:group-hover:bg-[#191920]">
                       <Badge
                         variant={
                           p.availableStock <= 0

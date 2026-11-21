@@ -5,7 +5,7 @@ if (process.env.FIREBASE_CONFIG) {
   try {
     // Dynamically require to avoid bundling issues in non‑Firebase builds
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const functions = require('firebase-functions') as typeof import('firebase-functions');
+    const functions = (require as any)('firebase-functions');
     const cfg = functions.config();
     // Google Sheets credentials
     process.env.GOOGLE_SHEET_ID ||= cfg.google?.sheet_id;
@@ -166,7 +166,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): P
 
 // In-memory cache with 5-second TTL to avoid Google Sheets 429 quota exhaustion
 const rowCache = new Map<string, { timestamp: number; data: SheetRow[] }>()
-const CACHE_TTL_MS = 1000
+const CACHE_TTL_MS = 5000
 
 export function invalidateCache(sheetName?: SheetName) {
   if (sheetName) {
@@ -370,95 +370,103 @@ export async function getRowById(sheetName: SheetName, id: string): Promise<Shee
 
 // ─── Sheet Initialization ─────────────────────────────────────────────────────
 
+let _sheetsInitPromise: Promise<void> | null = null
+
 /**
  * Creates all required sheet tabs with header rows if they don't already exist.
  */
 export async function initializeSheets(): Promise<void> {
-  if (!isGoogleSheetsConfigured()) {
-    ensureLocalDataDir()
-    for (const [name] of Object.entries(SHEET_HEADERS) as [SheetName, string[]][]) {
-      const filePath = getLocalFilePath(name)
-      if (!fs.existsSync(filePath)) {
-        writeLocalSheet(name, [])
+  if (_sheetsInitPromise) return _sheetsInitPromise
+
+  _sheetsInitPromise = (async () => {
+    if (!isGoogleSheetsConfigured()) {
+      ensureLocalDataDir()
+      for (const [name] of Object.entries(SHEET_HEADERS) as [SheetName, string[]][]) {
+        const filePath = getLocalFilePath(name)
+        if (!fs.existsSync(filePath)) {
+          writeLocalSheet(name, [])
+        }
       }
+      return
     }
-    return
-  }
 
-  const sheets = getSheetsClient()
-  const spreadsheetId = getSpreadsheetId()
+    const sheets = getSheetsClient()
+    const spreadsheetId = getSpreadsheetId()
 
-  const meta = await withRetry(() => sheets.spreadsheets.get({ spreadsheetId }))
-  const existingSheetTitles = (meta.data.sheets ?? []).map((s) => s.properties?.title ?? '')
-  const existingSheetsLower = new Map<string, string>()
-  existingSheetTitles.forEach((title) => existingSheetsLower.set(title.toLowerCase(), title))
+    const meta = await withRetry(() => sheets.spreadsheets.get({ spreadsheetId }))
+    const existingSheetTitles = (meta.data.sheets ?? []).map((s) => s.properties?.title ?? '')
+    const existingSheetsLower = new Map<string, string>()
+    existingSheetTitles.forEach((title) => existingSheetsLower.set(title.toLowerCase(), title))
 
-  const requests: sheets_v4.Schema$Request[] = []
-  const sheetsToAdd: { name: SheetName; headers: string[] }[] = []
+    const requests: sheets_v4.Schema$Request[] = []
+    const sheetsToAdd: { name: SheetName; headers: string[] }[] = []
 
-  for (const [name, headers] of Object.entries(SHEET_HEADERS) as [SheetName, string[]][]) {
-    const existingTitle = existingSheetsLower.get(name.toLowerCase())
-    if (!existingTitle) {
-      requests.push({
-        addSheet: { properties: { title: name } },
-      })
-      sheetsToAdd.push({ name, headers })
-    } else if (existingTitle !== name) {
-      // Rename existing sheet to match exact casing (e.g. 'categories' -> 'Categories')
-      const sheetObj = meta.data.sheets?.find((s) => s.properties?.title === existingTitle)
-      if (sheetObj?.properties?.sheetId !== undefined) {
+    for (const [name, headers] of Object.entries(SHEET_HEADERS) as [SheetName, string[]][]) {
+      const existingTitle = existingSheetsLower.get(name.toLowerCase())
+      if (!existingTitle) {
         requests.push({
-          updateSheetProperties: {
-            properties: {
-              sheetId: sheetObj.properties.sheetId,
-              title: name,
-            },
-            fields: 'title',
-          },
+          addSheet: { properties: { title: name } },
         })
-      }
-    }
-  }
-
-  if (requests.length > 0) {
-    await withRetry(() =>
-      sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: { requests },
-      })
-    )
-
-    for (const { name, headers } of sheetsToAdd) {
-      await appendRow(name, headers)
-    }
-  }
-
-  for (const [name, headers] of Object.entries(SHEET_HEADERS) as [SheetName, string[]][]) {
-    const response = await withRetry(() =>
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${name}!1:1`,
-      })
-    )
-    const existingHeaders = (response.data.values?.[0] as string[] | undefined)?.map((h) => h.trim())
-    if (!existingHeaders || existingHeaders.length === 0) {
-      await appendRow(name, headers)
-    } else {
-      const missingHeaders = headers.filter((h) => !existingHeaders.includes(h))
-      if (missingHeaders.length > 0) {
-        const newHeaderRow = [...existingHeaders, ...missingHeaders]
-        const lastCol = columnLetter(newHeaderRow.length)
-        await withRetry(() =>
-          sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${name}!A1:${lastCol}1`,
-            valueInputOption: 'RAW',
-            requestBody: { values: [newHeaderRow] },
+        sheetsToAdd.push({ name, headers })
+      } else if (existingTitle !== name) {
+        // Rename existing sheet to match exact casing (e.g. 'categories' -> 'Categories')
+        const sheetObj = meta.data.sheets?.find((s) => s.properties?.title === existingTitle)
+        if (sheetObj?.properties?.sheetId !== undefined) {
+          requests.push({
+            updateSheetProperties: {
+              properties: {
+                sheetId: sheetObj.properties.sheetId,
+                title: name,
+              },
+              fields: 'title',
+            },
           })
-        )
+        }
       }
     }
-  }
+
+    if (requests.length > 0) {
+      await withRetry(() =>
+        sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: { requests },
+        })
+      )
+
+      for (const { name, headers } of sheetsToAdd) {
+        await appendRow(name, headers)
+      }
+    }
+
+    for (const [name, headers] of Object.entries(SHEET_HEADERS) as [SheetName, string[]][]) {
+      const response = await withRetry(() =>
+        sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${name}!1:1`,
+        })
+      )
+      const existingHeaders = (response.data.values?.[0] as string[] | undefined)?.map((h) => h.trim())
+      if (!existingHeaders || existingHeaders.length === 0) {
+        await appendRow(name, headers)
+      } else {
+        const missingHeaders = headers.filter((h) => !existingHeaders.includes(h))
+        if (missingHeaders.length > 0) {
+          const newHeaderRow = [...existingHeaders, ...missingHeaders]
+          const lastCol = columnLetter(newHeaderRow.length)
+          await withRetry(() =>
+            sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${name}!A1:${lastCol}1`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [newHeaderRow] },
+            })
+          )
+        }
+      }
+    }
+  })()
+
+  return _sheetsInitPromise
 }
 
 // ─── App Settings Helpers ─────────────────────────────────────────────────────

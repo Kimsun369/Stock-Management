@@ -15,7 +15,7 @@ export function AuditLogsView() {
   const { t, formatDate } = useI18n()
   const { data: logs, isLoading } = useSWR<AuditLog[]>('/api/audit-logs', fetcher)
 
-  const items = logs || []
+  const items = Array.isArray(logs) ? logs : []
 
   return (
     <div className="space-y-6">

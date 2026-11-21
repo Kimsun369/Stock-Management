@@ -242,7 +242,7 @@ export async function requestAdjustment(params: {
     action: 'ADJUSTMENT_APPLIED',
     entityType: 'StockAdjustmentRequest',
     entityId: id,
-    details: `Applied adjustment of ${params.requestedChange > 0 ? '+' : ''}${params.requestedChange} for ${product.name} (${currentQty} -> ${resultingBalance}; Reason: ${params.reason})`,
+    details: `Applied adjustment of ${params.requestedChange > 0 ? '+' : ''}${params.requestedChange} for ${product.name} (${currentQty} -> ${resultingBalance}; Reason: ${params.reason}${params.notes ? `; Note: ${params.notes}` : ''})`,
   })
 
   return {

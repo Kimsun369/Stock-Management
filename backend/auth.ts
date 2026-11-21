@@ -16,6 +16,10 @@ void (async () => {
   }
 })();
 
+if (process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_SECRET) {
+  throw new Error('FATAL: NEXTAUTH_SECRET environment variable is missing in production.')
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -78,12 +82,6 @@ export const authOptions: AuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    // Existing callbacks (signIn, jwt, session) stay unchanged.
-    // Add an error event to log the error name and message without exposing secrets.
-    async error({ error, ...rest }) {
-      // Log only the error identifier and message for debugging; never log env vars.
-      console.error('NextAuth error:', error)
-    },
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
         if (!user.email) return false
@@ -161,5 +159,5 @@ export const authOptions: AuthOptions = {
     signIn: '/',
     error: '/',
   },
-  secret: process.env.NEXTAUTH_SECRET || 'karaoke-stock-fallback-secret-2026',
+  secret: process.env.NEXTAUTH_SECRET,
 }

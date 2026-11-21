@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/backend/auth'
 import { getProducts, createProduct } from '@/backend/services/products.service'
+import { productCreateSchema } from '@/lib/validations'
 
 export async function GET(req: Request) {
   try {
@@ -28,12 +29,16 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
     if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 })
 
-    const body = await req.json()
-    const product = await createProduct(body, session.user.id, session.user.name || 'Admin')
+    const json = await req.json()
+    const parsed = productCreateSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 })
+    }
+
+    const product = await createProduct(parsed.data, session.user.id, session.user.name || 'Admin')
     return NextResponse.json(product)
   } catch (error: any) {
     const status = error.message === 'DUPLICATE_SKU' ? 400 : 500
     return NextResponse.json({ error: error.message || 'Error creating product' }, { status })
   }
 }
-

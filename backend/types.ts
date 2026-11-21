@@ -56,6 +56,7 @@ export interface Product {
   purchaseCost: number
   physicalStock: number
   reservedStock: number
+  customerLeftoverStock?: number
   minStock: number
   defaultSupplierId: string
   description: string
