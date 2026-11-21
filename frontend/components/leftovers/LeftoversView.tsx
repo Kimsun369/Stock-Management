@@ -88,7 +88,10 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
     try {
       const res = await fetch(`/api/leftovers/${collectRecord.id}/collect`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': crypto.randomUUID(),
+        },
         body: JSON.stringify(payload),
       })
 
@@ -118,7 +121,10 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
     try {
       const res = await fetch(`/api/leftovers/${cancelRecord.id}/cancel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': crypto.randomUUID(),
+        },
         body: JSON.stringify({ reason: cancelReason.trim() || undefined }),
       })
       if (!res.ok) {

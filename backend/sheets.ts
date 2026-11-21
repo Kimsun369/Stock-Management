@@ -313,50 +313,184 @@ export async function findRowIndex(
 
 /**
  * Update a specific field in a row by row ID.
+ * Re-reads row 1 headers and the ID column immediately before writing to guarantee
+ * mapping by actual header name and writing to the exact row index.
  */
 export async function updateRowById(
   sheetName: SheetName,
   id: string,
   updates: Partial<SheetRow>
 ): Promise<void> {
-  const rows = await getAllRows(sheetName)
-  const idx = rows.findIndex((r) => r.id === id)
-  if (idx === -1) throw new Error(`Row with id ${id} not found in ${sheetName}`)
-
-  const updatedRow: Record<string, string> = { ...rows[idx], ...updates, updatedAt: new Date().toISOString() }
-  const headers = SHEET_HEADERS[sheetName]
-  const values = headers.map((h) => updatedRow[h] ?? '')
-  await updateRow(sheetName, idx + 2, values)
-}
-
-export async function deleteRowById(sheetName: SheetName, id: string): Promise<void> {
-  const rows = await getAllRows(sheetName)
-  const idx = rows.findIndex((row) => row.id === id)
-  if (idx === -1) throw new Error(`Row with id ${id} not found in ${sheetName}`)
+  if (!id) throw new Error('ID is required for row update')
 
   if (!isGoogleSheetsConfigured()) {
-    writeLocalSheet(sheetName, rows.filter((row) => row.id !== id))
+    const existing = readLocalSheet(sheetName)
+    const idx = existing.findIndex((r) => r.id === id)
+    if (idx === -1) throw new Error(`Row with id ${id} not found in ${sheetName}`)
+
+    const expectedHeaders = SHEET_HEADERS[sheetName] || []
+    for (const key of Object.keys(updates)) {
+      if (expectedHeaders.length > 0 && !expectedHeaders.includes(key)) {
+        throw new Error(`Cannot update unknown column '${key}' in sheet ${sheetName}`)
+      }
+    }
+
+    const updatedRow: SheetRow = {
+      ...existing[idx],
+      ...updates,
+      ...(expectedHeaders.includes('updatedAt') ? { updatedAt: new Date().toISOString() } : {}),
+    }
+    existing[idx] = updatedRow
+    writeLocalSheet(sheetName, existing)
     invalidateCache(sheetName)
     return
   }
 
-  const sheets = getSheetsClient()
-  const spreadsheetId = getSpreadsheetId()
-  const metadata = await withRetry(() => sheets.spreadsheets.get({ spreadsheetId }))
-  const sheet = metadata.data.sheets?.find((item) => item.properties?.title === sheetName)
-  const sheetId = sheet?.properties?.sheetId
-  if (sheetId === undefined) throw new Error(`Sheet ${sheetName} not found`)
+  await withRetry(async () => {
+    const sheets = getSheetsClient()
+    const spreadsheetId = getSpreadsheetId()
 
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: [{
-        deleteDimension: {
-          range: { sheetId, dimension: 'ROWS', startIndex: idx + 1, endIndex: idx + 2 },
-        },
-      }],
-    },
+    // 1. Fetch live header row from row 1
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!1:1`,
+    })
+    const liveHeaders = (headerRes.data.values?.[0] as string[] | undefined)?.map((h) => h.trim()) || []
+    if (liveHeaders.length === 0) {
+      throw new Error(`Header row missing or empty in sheet ${sheetName}`)
+    }
+
+    const idColIndex = liveHeaders.indexOf('id')
+    if (idColIndex === -1) {
+      throw new Error(`Missing required 'id' column in sheet ${sheetName}`)
+    }
+
+    // Verify all updated columns exist in live headers
+    for (const key of Object.keys(updates)) {
+      if (!liveHeaders.includes(key)) {
+        throw new Error(`Cannot update column '${key}': header not found in sheet ${sheetName}`)
+      }
+    }
+
+    // 2. Fetch live ID column directly to find the exact row number
+    const idColLetter = columnLetter(idColIndex + 1)
+    const idRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!${idColLetter}:${idColLetter}`,
+    })
+    const idValues = (idRes.data.values || []) as string[][]
+    let foundRowIndex = -1
+    for (let r = 1; r < idValues.length; r++) {
+      if (idValues[r]?.[0] === id) {
+        foundRowIndex = r + 1 // 1-based sheet row number
+        break
+      }
+    }
+
+    if (foundRowIndex === -1) {
+      throw new Error(`Row with id ${id} not found in sheet ${sheetName}`)
+    }
+
+    // 3. Fetch existing row data at foundRowIndex to merge preserving existing fields
+    const lastColLetter = columnLetter(liveHeaders.length)
+    const existingRowRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A${foundRowIndex}:${lastColLetter}${foundRowIndex}`,
+    })
+    const existingValues = (existingRowRes.data.values?.[0] as string[] | undefined) || []
+
+    const currentMap: Record<string, string> = {}
+    liveHeaders.forEach((h, i) => {
+      currentMap[h] = existingValues[i] ?? ''
+    })
+
+    const merged: Record<string, string> = {
+      ...currentMap,
+      ...updates,
+      ...(liveHeaders.includes('updatedAt') ? { updatedAt: new Date().toISOString() } : {}),
+    }
+
+    // 4. Map in the exact order of liveHeaders
+    const updatedValues = liveHeaders.map((h) => merged[h] ?? '')
+
+    // 5. Write to the exact row index
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!A${foundRowIndex}:${lastColLetter}${foundRowIndex}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [updatedValues] },
+    })
   })
+
+  invalidateCache(sheetName)
+}
+
+export async function deleteRowById(sheetName: SheetName, id: string): Promise<void> {
+  if (!id) throw new Error('ID is required for row deletion')
+
+  if (!isGoogleSheetsConfigured()) {
+    const rows = readLocalSheet(sheetName)
+    const filtered = rows.filter((r) => r.id !== id)
+    if (filtered.length === rows.length) throw new Error(`Row with id ${id} not found in ${sheetName}`)
+    writeLocalSheet(sheetName, filtered)
+    invalidateCache(sheetName)
+    return
+  }
+
+  await withRetry(async () => {
+    const sheets = getSheetsClient()
+    const spreadsheetId = getSpreadsheetId()
+
+    // 1. Fetch live header row to find 'id' column
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!1:1`,
+    })
+    const liveHeaders = (headerRes.data.values?.[0] as string[] | undefined)?.map((h) => h.trim()) || []
+    const idColIndex = liveHeaders.indexOf('id')
+    if (idColIndex === -1) throw new Error(`Missing 'id' column in ${sheetName}`)
+
+    // 2. Fetch live ID column directly
+    const idColLetter = columnLetter(idColIndex + 1)
+    const idRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!${idColLetter}:${idColLetter}`,
+    })
+    const idValues = (idRes.data.values || []) as string[][]
+    let foundIdx0Based = -1
+    for (let r = 1; r < idValues.length; r++) {
+      if (idValues[r]?.[0] === id) {
+        foundIdx0Based = r
+        break
+      }
+    }
+
+    if (foundIdx0Based === -1) throw new Error(`Row with id ${id} not found in ${sheetName}`)
+
+    const metadata = await sheets.spreadsheets.get({ spreadsheetId })
+    const sheet = metadata.data.sheets?.find((item) => item.properties?.title === sheetName)
+    const sheetId = sheet?.properties?.sheetId
+    if (sheetId === undefined) throw new Error(`Sheet ${sheetName} not found`)
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: foundIdx0Based,
+                endIndex: foundIdx0Based + 1,
+              },
+            },
+          },
+        ],
+      },
+    })
+  })
+
   invalidateCache(sheetName)
 }
 

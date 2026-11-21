@@ -81,7 +81,10 @@ export function StockInView() {
     try {
       const res = await fetch('/api/stock/in', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': crypto.randomUUID(),
+        },
         body: JSON.stringify({
           productId: activeProductId,
           quantity: qtyNum,

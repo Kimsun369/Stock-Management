@@ -1,4 +1,4 @@
-import { getAllRows, appendRow, updateRowById, appendAuditLog, SHEETS } from '@/backend/sheets'
+import { getAllRows, appendRow, updateRowById, appendAuditLog, getRowById, invalidateCache, SHEETS } from '@/backend/sheets'
 import { StockTransaction, Product, TransactionType } from '@/backend/types'
 import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 
@@ -116,8 +116,17 @@ export async function recordStockIn(params: {
   }
   unitDetail = `${params.quantity} ${params.unit || baseUnit}`
 
-  const currentPhysical = Number(productRow.physicalStock) || 0
-  const reserved = Number(productRow.reservedStock) || 0
+  // RACE WINDOW MITIGATION (Requirement 11):
+  // Re-read current stock freshly right before computing the new value to shrink the race window.
+  // REMAINING RACE LIMITATION: Since Google Sheets API is an HTTP document interface without native
+  // ACID row-level locking or transactions, concurrent requests arriving at the exact same millisecond
+  // can still race on read-then-write. Re-reading immediately before writing significantly reduces
+  // this window. For strict concurrency locks, a transactional SQL database (e.g. Supabase/PostgreSQL)
+  // should be used in the future.
+  invalidateCache(SHEETS.Products)
+  const freshProduct = await getRowById(SHEETS.Products, productRow.id)
+  const currentPhysical = Number(freshProduct?.physicalStock ?? productRow.physicalStock) || 0
+  const reserved = Number(freshProduct?.reservedStock ?? productRow.reservedStock) || 0
   const newPhysical = currentPhysical + baseQuantity
 
   // Important pricing rule: Staff cannot edit purchase price! Use existing configured price.
@@ -126,14 +135,10 @@ export async function recordStockIn(params: {
   const currency = params.currency || 'USD'
   const now = new Date().toISOString()
   const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-
-  // 1. Update Product physicalStock (purchaseCost is NOT modified here)
-  await updateRowById(SHEETS.Products, productRow.id, {
-    physicalStock: String(newPhysical),
-  })
-
-  // 2. Append StockTransaction ledger entry
   const noteContent = params.description || params.notes || ''
+
+  // MULTI-SHEET WRITE ORDERING (Requirement 12):
+  // 1. Write the StockTransactions ledger entry FIRST as the immutable source of truth.
   await appendRow(SHEETS.StockTransactions, [
     txId,
     productRow.id,
@@ -152,34 +157,52 @@ export async function recordStockIn(params: {
     params.unit || baseUnit,
   ])
 
-  // 3. Append PurchaseRecord for spending calculations
-  if (unitCost > 0 || baseQuantity > 0) {
-    const purchaseId = `pur_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-    const totalAmount = Number((unitCost * baseQuantity).toFixed(2))
-    await appendRow(SHEETS.PurchaseRecords, [
-      purchaseId,
-      productRow.id,
-      params.supplierId || productRow.defaultSupplierId || '',
-      String(baseQuantity),
-      String(unitCost),
-      String(totalAmount),
-      currency,
-      '4100',
-      params.invoiceNumber || '',
-      now,
-      now,
-    ])
-  }
+  try {
+    // 2. Update Product physicalStock balance second
+    await updateRowById(SHEETS.Products, productRow.id, {
+      physicalStock: String(newPhysical),
+    })
 
-  // 4. Append AuditLog
-  await appendAuditLog({
-    actorId: params.userId,
-    actorName: params.userName,
-    action: 'STOCK_IN',
-    entityType: 'Product',
-    entityId: productRow.id,
-    details: `Added ${unitDetail} of ${productRow.name}. Stock updated: ${currentPhysical} -> ${newPhysical}`,
-  })
+    // 3. Append PurchaseRecord for spending calculations
+    if (unitCost > 0 || baseQuantity > 0) {
+      const purchaseId = `pur_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+      const totalAmount = Number((unitCost * baseQuantity).toFixed(2))
+      await appendRow(SHEETS.PurchaseRecords, [
+        purchaseId,
+        productRow.id,
+        params.supplierId || productRow.defaultSupplierId || '',
+        String(baseQuantity),
+        String(unitCost),
+        String(totalAmount),
+        currency,
+        '4100',
+        params.invoiceNumber || '',
+        now,
+        now,
+      ])
+    }
+
+    // 4. Append AuditLog
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'STOCK_IN',
+      entityType: 'Product',
+      entityId: productRow.id,
+      details: `Added ${unitDetail} of ${productRow.name}. Stock updated: ${currentPhysical} -> ${newPhysical}`,
+    })
+  } catch (err: any) {
+    // If a subsequent write fails, record PARTIAL_FAILURE with details and re-throw clearly
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'PARTIAL_FAILURE',
+      entityType: 'StockTransaction',
+      entityId: txId,
+      details: `Ledger entry ${txId} recorded but subsequent product/purchase write failed: ${err.message}. Expected physicalStock: ${newPhysical}`,
+    }).catch(() => {})
+    throw new Error(`Transaction recorded (${txId}), but subsequent inventory update failed: ${err.message}`)
+  }
 
   const updatedProduct: Product = {
     id: productRow.id,
@@ -260,8 +283,12 @@ export async function recordStockOut(params: {
   }
   unitDetail = `${params.quantity} ${params.unit || baseUnit}`
 
-  const currentPhysical = Number(productRow.physicalStock) || 0
-  const reserved = Number(productRow.reservedStock) || 0
+  // RACE WINDOW MITIGATION (Requirement 11):
+  // Re-read current stock freshly right before computing the new balance and verifying availability.
+  invalidateCache(SHEETS.Products)
+  const freshProduct = await getRowById(SHEETS.Products, productRow.id)
+  const currentPhysical = Number(freshProduct?.physicalStock ?? productRow.physicalStock) || 0
+  const reserved = Number(freshProduct?.reservedStock ?? productRow.reservedStock) || 0
   const available = currentPhysical - reserved
 
   // Server-side availability validation: prevent dispensing more than available base stock!
@@ -273,14 +300,10 @@ export async function recordStockOut(params: {
   const reason = params.reason?.trim() || ''
   const now = new Date().toISOString()
   const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-
-  // 1. Update Product physicalStock (purchaseCost is NOT modified)
-  await updateRowById(SHEETS.Products, productRow.id, {
-    physicalStock: String(newPhysical),
-  })
-
-  // 2. Append StockTransaction ledger entry
   const noteContent = params.notes || ''
+
+  // MULTI-SHEET WRITE ORDERING (Requirement 12):
+  // 1. Write StockTransactions ledger entry FIRST as immutable truth.
   await appendRow(SHEETS.StockTransactions, [
     txId,
     productRow.id,
@@ -299,15 +322,32 @@ export async function recordStockOut(params: {
     params.unit || baseUnit,
   ])
 
-  // 3. Append AuditLog
-  await appendAuditLog({
-    actorId: params.userId,
-    actorName: params.userName,
-    action: 'STOCK_OUT',
-    entityType: 'Product',
-    entityId: productRow.id,
-    details: `Dispensed ${unitDetail} of ${productRow.name}${reason ? ` (${reason})` : ''}. Stock: ${currentPhysical} -> ${newPhysical}`,
-  })
+  try {
+    // 2. Update Product physicalStock balance second
+    await updateRowById(SHEETS.Products, productRow.id, {
+      physicalStock: String(newPhysical),
+    })
+
+    // 3. Append AuditLog
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'STOCK_OUT',
+      entityType: 'Product',
+      entityId: productRow.id,
+      details: `Dispensed ${unitDetail} of ${productRow.name}${reason ? ` (${reason})` : ''}. Stock: ${currentPhysical} -> ${newPhysical}`,
+    })
+  } catch (err: any) {
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'PARTIAL_FAILURE',
+      entityType: 'StockTransaction',
+      entityId: txId,
+      details: `Ledger entry ${txId} recorded but subsequent product deduction failed: ${err.message}. Expected physicalStock: ${newPhysical}`,
+    }).catch(() => {})
+    throw new Error(`Transaction recorded (${txId}), but inventory update failed: ${err.message}`)
+  }
 
   const updatedProduct: Product = {
     id: productRow.id,
@@ -378,18 +418,19 @@ export async function recordReturn(params: {
   const altUnit = units.altUnit || ''
   const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
   const quantity = altUnit && conversionRate > 1 && (!params.unit || params.unit.toLowerCase() === baseUnit.toLowerCase()) ? params.quantity * conversionRate : params.quantity
-  const currentPhysical = Number(productRow.physicalStock) || 0
-  const reserved = Number(productRow.reservedStock) || 0
+
+  // RACE WINDOW MITIGATION (Requirement 11):
+  // Re-read current stock freshly right before computing new balance.
+  invalidateCache(SHEETS.Products)
+  const freshProduct = await getRowById(SHEETS.Products, productRow.id)
+  const currentPhysical = Number(freshProduct?.physicalStock ?? productRow.physicalStock) || 0
+  const reserved = Number(freshProduct?.reservedStock ?? productRow.reservedStock) || 0
   const newPhysical = currentPhysical + quantity
   const now = new Date().toISOString()
   const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
 
-  // 1. Add back to physical stock
-  await updateRowById(SHEETS.Products, productRow.id, {
-    physicalStock: String(newPhysical),
-  })
-
-  // 2. Append StockTransaction ledger entry
+  // MULTI-SHEET WRITE ORDERING (Requirement 12):
+  // 1. Append StockTransaction ledger entry FIRST
   await appendRow(SHEETS.StockTransactions, [
     txId,
     productRow.id,
@@ -408,15 +449,32 @@ export async function recordReturn(params: {
     params.unit || baseUnit,
   ])
 
-  // 3. Append AuditLog
-  await appendAuditLog({
-    actorId: params.userId,
-    actorName: params.userName,
-    action: 'RETURN',
-    entityType: 'Product',
-    entityId: productRow.id,
-    details: `Returned ${quantity} ${baseUnit} of ${productRow.name} to available inventory (${params.reason})`,
-  })
+  try {
+    // 2. Add back to physical stock
+    await updateRowById(SHEETS.Products, productRow.id, {
+      physicalStock: String(newPhysical),
+    })
+
+    // 3. Append AuditLog
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'RETURN',
+      entityType: 'Product',
+      entityId: productRow.id,
+      details: `Returned ${quantity} ${baseUnit} of ${productRow.name} to available inventory (${params.reason})`,
+    })
+  } catch (err: any) {
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'PARTIAL_FAILURE',
+      entityType: 'StockTransaction',
+      entityId: txId,
+      details: `Return ledger entry ${txId} recorded but product stock update failed: ${err.message}. Expected physicalStock: ${newPhysical}`,
+    }).catch(() => {})
+    throw new Error(`Return recorded (${txId}), but inventory update failed: ${err.message}`)
+  }
 
   const updatedProduct: Product = {
     id: productRow.id,

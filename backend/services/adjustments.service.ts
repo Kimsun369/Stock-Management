@@ -1,4 +1,4 @@
-import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
+import { getAllRows, appendRow, updateRowById, appendAuditLog, generateId, getRowById, invalidateCache, SHEETS } from '@/backend/sheets'
 import { AdjustmentRequest, AdjustmentStatus } from '@/backend/types'
 import { normalizeUnitPair } from '@/backend/unit-config'
 
@@ -200,15 +200,22 @@ export async function requestAdjustment(params: {
   const product = products.find((p) => p.id === params.productId && p.active === 'true')
   if (!product) throw new Error('PRODUCT_NOT_FOUND')
 
-  const currentQty = Number(product.physicalStock) || 0
+  // RACE WINDOW MITIGATION (Requirement 11):
+  // Re-read current stock freshly right before computing the new balance
+  invalidateCache(SHEETS.Products)
+  const freshProduct = await getRowById(SHEETS.Products, product.id)
+  const currentQty = Number(freshProduct?.physicalStock ?? product.physicalStock) || 0
   const resultingBalance = currentQty + params.requestedChange
   if (resultingBalance < 0) throw new Error('Adjustment cannot result in negative inventory')
 
   const id = generateId()
+  const txId = generateId()
   const now = new Date().toISOString()
-  await updateRowById(SHEETS.Products, product.id, { physicalStock: String(resultingBalance) })
+
+  // MULTI-SHEET WRITE ORDERING (Requirement 12):
+  // 1. Write the StockTransactions ledger entry FIRST
   await appendRow(SHEETS.StockTransactions, [
-    generateId(),
+    txId,
     product.id,
     'ADJUSTMENT',
     String(Math.abs(params.requestedChange)),
@@ -222,28 +229,47 @@ export async function requestAdjustment(params: {
     params.userId,
     now,
   ])
-  await appendRow(SHEETS.AdjustmentRequests, [
-    id,
-    product.id,
-    String(currentQty),
-    String(params.requestedChange),
-    params.reason,
-    params.notes || '',
-    'APPLIED',
-    params.userId,
-    params.userId,
-    'Applied immediately; approval is not required.',
-    now,
-    now,
-  ])
-  await appendAuditLog({
-    actorId: params.userId,
-    actorName: params.userName,
-    action: 'ADJUSTMENT_APPLIED',
-    entityType: 'StockAdjustmentRequest',
-    entityId: id,
-    details: `Applied adjustment of ${params.requestedChange > 0 ? '+' : ''}${params.requestedChange} for ${product.name} (${currentQty} -> ${resultingBalance}; Reason: ${params.reason}${params.notes ? `; Note: ${params.notes}` : ''})`,
-  })
+
+  try {
+    // 2. Update Product physicalStock balance second
+    await updateRowById(SHEETS.Products, product.id, { physicalStock: String(resultingBalance) })
+
+    // 3. Append AdjustmentRequest record
+    await appendRow(SHEETS.AdjustmentRequests, [
+      id,
+      product.id,
+      String(currentQty),
+      String(params.requestedChange),
+      params.reason,
+      params.notes || '',
+      'APPLIED',
+      params.userId,
+      params.userId,
+      'Applied immediately; approval is not required.',
+      now,
+      now,
+    ])
+
+    // 4. Append AuditLog
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'ADJUSTMENT_APPLIED',
+      entityType: 'StockAdjustmentRequest',
+      entityId: id,
+      details: `Applied adjustment of ${params.requestedChange > 0 ? '+' : ''}${params.requestedChange} for ${product.name} (${currentQty} -> ${resultingBalance}; Reason: ${params.reason}${params.notes ? `; Note: ${params.notes}` : ''})`,
+    })
+  } catch (err: any) {
+    await appendAuditLog({
+      actorId: params.userId,
+      actorName: params.userName,
+      action: 'PARTIAL_FAILURE',
+      entityType: 'StockTransaction',
+      entityId: txId,
+      details: `Adjustment ledger entry ${txId} recorded but subsequent product update failed: ${err.message}. Expected physicalStock: ${resultingBalance}`,
+    }).catch(() => {})
+    throw new Error(`Adjustment recorded (${txId}), but inventory update failed: ${err.message}`)
+  }
 
   return {
     id,

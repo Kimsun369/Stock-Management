@@ -94,7 +94,10 @@ export function StockOutView() {
     try {
       const res = await fetch('/api/stock/out', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': crypto.randomUUID(),
+        },
         body: JSON.stringify({
           productId: selectedProduct.id,
           quantity: qtyNum,

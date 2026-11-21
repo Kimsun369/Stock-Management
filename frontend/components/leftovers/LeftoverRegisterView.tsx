@@ -87,7 +87,10 @@ export function LeftoverRegisterView() {
     try {
       const res = await fetch('/api/leftovers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': crypto.randomUUID(),
+        },
         body: JSON.stringify({
           customerName,
           customerPhone,
