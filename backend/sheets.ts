@@ -4,8 +4,8 @@ import { google, sheets_v4 } from 'googleapis'
 if (process.env.FIREBASE_CONFIG) {
   try {
     // Dynamically require to avoid bundling issues in non‑Firebase builds
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const functions = (require as any)('firebase-functions');
+    const fnModuleName = 'firebase-functions'
+    const functions = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__(fnModuleName) : (require as any)(fnModuleName);
     const cfg = functions.config();
     // Google Sheets credentials
     process.env.GOOGLE_SHEET_ID ||= cfg.google?.sheet_id;

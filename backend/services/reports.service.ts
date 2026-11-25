@@ -78,6 +78,7 @@ export async function getReportData(params: {
         date: (p.purchaseDate || p.createdAt).slice(0, 10),
         product: prod?.name || 'Product',
         supplier: supMap.get(p.supplierId) || 'Supplier',
+        supplierId: p.supplierId,
         quantity: packageQuantity,
         unit: prod?.unit || '',
         unitCost: matchesConfiguredPrice ? configuredPackageCost : (Number(p.unitCost) || 0) * rate,
@@ -87,15 +88,30 @@ export async function getReportData(params: {
       }
     })
 
+    if (startDate) {
+      list = list.filter((p) => p.date >= startDate)
+    }
+    if (endDate) {
+      list = list.filter((p) => p.date <= endDate)
+    }
+
     if (supplierId && supplierId !== 'ALL') {
-      list = list.filter((p) => p.supplier === supplierId)
+      list = list.filter((p) => p.supplierId === supplierId || p.supplier === supplierId)
     }
     return list
   }
 
   if (type === 'leftovers') {
     const { records } = await getCustomerRecords({ limit: 1000 })
-    return records.map((r) => ({
+    let filteredRecords = records
+    if (startDate) {
+      filteredRecords = filteredRecords.filter((r) => r.createdAt.slice(0, 10) >= startDate)
+    }
+    if (endDate) {
+      filteredRecords = filteredRecords.filter((r) => r.createdAt.slice(0, 10) <= endDate)
+    }
+
+    return filteredRecords.map((r) => ({
       receiptNumber: r.recordNumber,
       customerName: r.customerName,
       customerPhone: r.customerPhone,
@@ -110,7 +126,15 @@ export async function getReportData(params: {
 
   if (type === 'staff') {
     const logs = await getAllRows(SHEETS.AuditLogs)
-    return logs.map((l) => ({
+    let filteredLogs = logs
+    if (startDate) {
+      filteredLogs = filteredLogs.filter((l) => l.createdAt.slice(0, 10) >= startDate)
+    }
+    if (endDate) {
+      filteredLogs = filteredLogs.filter((l) => l.createdAt.slice(0, 10) <= endDate)
+    }
+
+    return filteredLogs.map((l) => ({
       timestamp: l.createdAt.slice(0, 16).replace('T', ' '),
       staff: l.actorName || 'Staff',
       action: l.action,
@@ -140,7 +164,7 @@ export async function generateCsvReport(params: {
   }
 
   const isKm = params.language === 'km'
-  const keys = Object.keys(data[0])
+  const keys = Object.keys(data[0]).filter((k) => k !== 'supplierId')
 
   // Localized column header translation map
   const HEADER_MAP: Record<string, { en: string; km: string }> = {
@@ -150,7 +174,7 @@ export async function generateCsvReport(params: {
     category: { en: 'Category', km: 'ប្រភេទ' },
     unit: { en: 'Unit', km: 'ឯកតា' },
     purchaseUnit: { en: 'Purchase Unit', km: 'ឯកតាយកចូល' },
-    costPerUnit: { en: 'Cost per Item', km: 'តម្លៃក្នុងមួយឯកតា' },
+    costPerUnit: { en: 'Cost per Item ($)', km: 'តម្លៃក្នុងមួយឯកតា ($)' },
     physicalStock: { en: 'Physical Stock', km: 'ស្តុកជាក់ស្តែង' },
     reservedStock: { en: 'Reserved Stock', km: 'ស្តុកភ្ញៀវផ្ញើ' },
     availableStock: { en: 'Available Stock', km: 'ស្តុកអាចលក់' },
@@ -167,8 +191,8 @@ export async function generateCsvReport(params: {
     reason: { en: 'Reason', km: 'មូលហេតុ' },
     recordedBy: { en: 'Recorded By', km: 'កត់ត្រាដោយ' },
     supplier: { en: 'Supplier', km: 'អ្នកផ្គត់ផ្គង់' },
-    unitCost: { en: 'Unit Cost', km: 'ថ្លៃដើមមួយឯកតា' },
-    totalAmount: { en: 'Total Amount', km: 'ទឹកប្រាក់សរុប' },
+    unitCost: { en: 'Unit Cost ($)', km: 'ថ្លៃដើមមួយឯកតា ($)' },
+    totalAmount: { en: 'Total Amount ($)', km: 'ទឹកប្រាក់សរុប ($)' },
     currency: { en: 'Currency', km: 'រូបិយប័ណ្ណ' },
     invoiceNumber: { en: 'Invoice #', km: 'លេខវិក្កយបត្រ' },
     receiptNumber: { en: 'Receipt #', km: 'លេខបង្កាន់ដៃ' },
@@ -186,8 +210,12 @@ export async function generateCsvReport(params: {
   }
 
   const escapeCell = (val: any) => {
-    const s = String(val ?? '').replace(/"/g, '""')
-    return `"${s}"`
+    let s = String(val ?? '')
+    // Spreadsheet formula injection mitigation: prefix cells starting with =, +, -, @, \t, \r with single quote
+    if (/^[=+\-@\t\r]/.test(s)) {
+      s = `'${s}`
+    }
+    return `"${s.replace(/"/g, '""')}"`
   }
 
   const headers = keys.map((k) => {

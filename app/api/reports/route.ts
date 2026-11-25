@@ -31,10 +31,14 @@ export async function GET(req: Request) {
         supplierId,
       })
 
+      const fromStr = startDate || 'all'
+      const toStr = endDate || new Date().toISOString().slice(0, 10)
+      const filename = `${type}_${fromStr}_${toStr}.csv`
+
       return new NextResponse(csv, {
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${type}_report_${Date.now()}.csv"`,
+          'Content-Disposition': `attachment; filename="${filename}"`,
         },
       })
     }
