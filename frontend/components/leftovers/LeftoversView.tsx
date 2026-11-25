@@ -15,6 +15,7 @@ import { Modal } from '@/frontend/components/ui/Modal'
 import { Input } from '@/frontend/components/ui/Input'
 import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
 import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
+import { Pagination } from '@/frontend/components/ui/Pagination'
 import { CustomerReceipt } from '@/frontend/components/customer-receipt'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -313,6 +314,14 @@ export function LeftoversView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'ST
           </tbody>
         </table>
       </ScrollableTable>
+
+      <Pagination
+        currentPage={page}
+        totalPages={data?.totalPages || 1}
+        totalItems={data?.total || (data?.records || []).length}
+        itemsPerPage={20}
+        onPageChange={(p) => setPage(p)}
+      />
 
       {/* Collect Items Modal */}
       {collectRecord && (

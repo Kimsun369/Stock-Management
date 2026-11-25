@@ -27,6 +27,7 @@ import { StatCard } from '@/frontend/components/ui/StatCard'
 import { Select } from '@/frontend/components/ui/Select'
 import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
 import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
+import { Pagination } from '@/frontend/components/ui/Pagination'
 import { formatStockQuantity } from '@/lib/unit-labels'
 import { getPresetDateRange } from '@/lib/business-day'
 
@@ -47,6 +48,8 @@ export function ReportsView() {
   const [selectedMovementType, setSelectedMovementType] = useState<string>('ALL')
   const [selectedSupplier, setSelectedSupplier] = useState<string>('ALL')
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
 
   // Fetch ancillary data for filter dropdowns
   const { data: categoriesData } = useSWR('/api/categories', fetcher)
@@ -174,6 +177,12 @@ export function ReportsView() {
 
     return list
   }, [rawItems, reportType, selectedMovementType, searchQuery])
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage) || 1
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredItems.slice(start, start + itemsPerPage)
+  }, [filteredItems, currentPage, itemsPerPage])
 
   // Summary Metrics calculations
   const summaryMetrics = useMemo(() => {
@@ -586,7 +595,7 @@ export function ReportsView() {
         <>
           {/* Mobile View: Cards (sm:hidden) */}
           <div className="block sm:hidden space-y-3">
-            {filteredItems.map((item, idx) => {
+            {paginatedItems.map((item, idx) => {
               const rowId = `mobile-${idx}`
               const isExpanded = !!expandedRows[rowId]
 
@@ -814,7 +823,7 @@ export function ReportsView() {
                 </thead>
 
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {filteredItems.map((row, idx) => {
+                  {paginatedItems.map((row, idx) => {
                     const rowId = `row-${idx}`
                     const isExpanded = !!expandedRows[rowId]
 
@@ -1128,6 +1137,20 @@ export function ReportsView() {
               </table>
             </ScrollableTable>
           </div>
+
+          {/* Elder-Friendly Big Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredItems.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={(p) => setCurrentPage(p)}
+            onItemsPerPageChange={(sz) => {
+              setItemsPerPage(sz)
+              setCurrentPage(1)
+            }}
+            pageSizeOptions={[15, 30, 50, 100]}
+          />
         </>
       )}
     </div>

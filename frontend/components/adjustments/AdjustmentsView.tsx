@@ -13,6 +13,7 @@ import { Select } from '@/frontend/components/ui/Select'
 import { Modal } from '@/frontend/components/ui/Modal'
 import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
 import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
+import { Pagination } from '@/frontend/components/ui/Pagination'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -24,6 +25,8 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
 
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [detailAdjustment, setDetailAdjustment] = useState<AdjustmentRequest | null>(null)
+  const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   const [productId, setProductId] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('')
   const [requestedChange, setRequestedChange] = useState('-2')
@@ -32,6 +35,9 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const productList = products?.products || []
+  const items = Array.isArray(adjustments) ? adjustments : []
+  const totalPages = Math.ceil(items.length / itemsPerPage) || 1
+  const paginatedAdjustments = items.slice((page - 1) * itemsPerPage, page * itemsPerPage)
   const selectedProd = productList.find((p: any) => p.id === (productId || productList[0]?.id))
   const mainUnit = selectedProd?.unit || 'unit'
   const minorUnit = selectedProd?.altUnit || ''
@@ -125,14 +131,14 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
                   <TableLoadingCard />
                 </td>
               </tr>
-            ) : (adjustments || []).length === 0 ? (
+            ) : paginatedAdjustments.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
             ) : (
-              (adjustments || []).map((adj) => (
+              paginatedAdjustments.map((adj) => (
                 <tr key={adj.id} onClick={() => setDetailAdjustment(adj)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setDetailAdjustment(adj) }} tabIndex={0} role="button" aria-label={`${t('common.view')} ${adj.productName}`} className="cursor-pointer hover:bg-zinc-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 dark:hover:bg-zinc-800/40 transition-colors">
                   <td className="w-px whitespace-nowrap px-3.5 py-3 font-semibold text-gray-900 dark:text-zinc-100">{adj.productName}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-right text-gray-600 dark:text-zinc-300 font-mono">
@@ -152,6 +158,19 @@ export function AdjustmentsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | '
           </tbody>
         </table>
       </ScrollableTable>
+
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={items.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={(p) => setPage(p)}
+        onItemsPerPageChange={(sz) => {
+          setItemsPerPage(sz)
+          setPage(1)
+        }}
+        pageSizeOptions={[15, 30, 50, 100]}
+      />
 
       <Modal isOpen={Boolean(detailAdjustment)} onClose={() => setDetailAdjustment(null)} title={detailAdjustment?.productName || t('adjustments.title')}>
         {detailAdjustment && <dl className="grid gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/40">

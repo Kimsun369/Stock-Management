@@ -14,6 +14,7 @@ import { Modal } from '@/frontend/components/ui/Modal'
 import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
 import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
 import { SuccessNotice } from '@/frontend/components/ui/SuccessNotice'
+import { Pagination } from '@/frontend/components/ui/Pagination'
 import { formatStockQuantity, formatUnitLabel } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -47,6 +48,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
   const [categoryId, setCategoryId] = useState('ALL')
   const [status, setStatus] = useState<'all' | 'inStock' | 'lowStock' | 'outOfStock'>('all')
   const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -209,7 +211,9 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
     { value: 'កញ្ចប់', label: t('products.units.pack') },
   ]
 
-  const productsList: ProductWithDetails[] = data?.products || []
+  const rawProducts: ProductWithDetails[] = data?.products || []
+  const totalPages = Math.ceil(rawProducts.length / itemsPerPage) || 1
+  const productsList: ProductWithDetails[] = rawProducts.slice((page - 1) * itemsPerPage, page * itemsPerPage)
   const categorySummary = categoryList
   const allProductCount = categorySummary.reduce(
     (count: number, category: any) => count + (Number(category.productCount) || 0),
@@ -443,6 +447,19 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
           </tbody>
         </table>
       </ScrollableTable>
+
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={rawProducts.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={(p) => setPage(p)}
+        onItemsPerPageChange={(sz) => {
+          setItemsPerPage(sz)
+          setPage(1)
+        }}
+        pageSizeOptions={[15, 30, 50, 100]}
+      />
 
       {/* Add / Edit Product Modal */}
       <Modal

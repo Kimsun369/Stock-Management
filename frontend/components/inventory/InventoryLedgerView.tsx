@@ -11,6 +11,7 @@ import { Badge } from '@/frontend/components/ui/Badge'
 import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
 import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
 import { Select } from '@/frontend/components/ui/Select'
+import { Pagination } from '@/frontend/components/ui/Pagination'
 import { formatStockQuantity, formatUnitLabel } from '@/lib/unit-labels'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -19,10 +20,14 @@ export function InventoryLedgerView() {
   const { t, language, formatNumber } = useI18n()
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(15)
   const { data, isLoading } = useSWR(`/api/products?search=${encodeURIComponent(search)}&categoryId=${categoryId}&limit=500&status=all`, fetcher)
   const { data: categories } = useSWR('/api/categories', fetcher)
 
   const products: ProductWithDetails[] = data?.products || []
+  const totalPages = Math.ceil(products.length / itemsPerPage) || 1
+  const paginatedProducts = products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   const categoryOptions = [
     { value: 'ALL', label: t('common.selectCategory') },
     ...(Array.isArray(categories) ? categories : []).map((category: any) => ({
@@ -101,7 +106,10 @@ export function InventoryLedgerView() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setCurrentPage(1)
+            }}
             placeholder={t('common.search')}
             className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
@@ -111,7 +119,10 @@ export function InventoryLedgerView() {
             label={t('reports.filterCategory')}
             options={categoryOptions}
             value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
+            onChange={(event) => {
+              setCategoryId(event.target.value)
+              setCurrentPage(1)
+            }}
           />
         </div>
       </div>
@@ -143,14 +154,14 @@ export function InventoryLedgerView() {
                   <TableLoadingCard />
                 </td>
               </tr>
-            ) : products.length === 0 ? (
+            ) : paginatedProducts.length === 0 ? (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-gray-400">
                   {t('common.noRecords')}
                 </td>
               </tr>
             ) : (
-              products.map((p) => {
+              paginatedProducts.map((p) => {
                 const displayName = language === 'km' && p.nameKm ? p.nameKm : p.name
                 return (
                   <tr key={p.id} className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
@@ -196,6 +207,19 @@ export function InventoryLedgerView() {
           </tbody>
         </table>
       </ScrollableTable>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={products.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={(page) => setCurrentPage(page)}
+        onItemsPerPageChange={(size) => {
+          setItemsPerPage(size)
+          setCurrentPage(1)
+        }}
+        pageSizeOptions={[15, 30, 50, 100]}
+      />
     </div>
   )
 }
