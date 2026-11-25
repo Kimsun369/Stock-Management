@@ -6,7 +6,7 @@ import {
   Download,
   FileSpreadsheet,
   Search,
-  RefreshCw,
+  RotateCcw,
   ChevronDown,
   ChevronUp,
   Boxes,
@@ -17,14 +17,14 @@ import {
   AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
-  RotateCcw,
-  SlidersHorizontal,
+  Filter,
+  Calendar,
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n-context'
 import { Button } from '@/frontend/components/ui/Button'
-import { Input } from '@/frontend/components/ui/Input'
 import { Badge } from '@/frontend/components/ui/Badge'
 import { StatCard } from '@/frontend/components/ui/StatCard'
+import { Select } from '@/frontend/components/ui/Select'
 import { ScrollableTable } from '@/frontend/components/ui/ScrollableTable'
 import { TableLoadingCard } from '@/frontend/components/ui/TableLoadingCard'
 import { formatStockQuantity } from '@/lib/unit-labels'
@@ -125,6 +125,33 @@ export function ReportsView() {
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  // Category options for dropdown
+  const categoryOptions = useMemo(() => [
+    { value: 'ALL', label: t('reports.allCategories') },
+    ...categories.map((c: any) => ({
+      value: c.id,
+      label: language === 'km' && c.nameKm ? `${c.nameKm} (${c.name})` : c.name,
+    })),
+  ], [categories, language, t])
+
+  // Movement type options for dropdown
+  const movementTypeOptions = useMemo(() => [
+    { value: 'ALL', label: t('reports.allTypes') },
+    { value: 'IN', label: `${t('nav.stockIn')} (IN)` },
+    { value: 'OUT', label: `${t('nav.stockOut')} (OUT)` },
+    { value: 'RETURN', label: `${t('nav.returnedItems')} (RETURN)` },
+    { value: 'ADJUSTMENT', label: `${t('adjustments.title')} (ADJUST)` },
+  ], [t])
+
+  // Supplier options for dropdown
+  const supplierOptions = useMemo(() => [
+    { value: 'ALL', label: t('reports.allSuppliers') },
+    ...suppliers.map((s: any) => ({
+      value: s.id,
+      label: s.name,
+    })),
+  ], [suppliers, t])
+
   // Client-side filtering (search query & movement type)
   const filteredItems = useMemo(() => {
     let list = rawItems
@@ -223,16 +250,16 @@ export function ReportsView() {
       return <Badge variant="neutral">{s}</Badge>
     }
     if (s === 'IN') {
-      return <Badge variant="success">IN</Badge>
+      return <Badge variant="success">{t('nav.stockIn')}</Badge>
     }
     if (s === 'OUT') {
-      return <Badge variant="danger">OUT</Badge>
+      return <Badge variant="danger">{t('nav.stockOut')}</Badge>
     }
     if (s === 'RETURN') {
-      return <Badge variant="info">RETURN</Badge>
+      return <Badge variant="info">{t('nav.returnedItems')}</Badge>
     }
     if (s === 'ADJUSTMENT') {
-      return <Badge variant="warning">ADJUST</Badge>
+      return <Badge variant="warning">{t('adjustments.title')}</Badge>
     }
     return <Badge variant="neutral">{s}</Badge>
   }
@@ -242,27 +269,27 @@ export function ReportsView() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 font-khmer">
             {t('reports.title')}
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-khmer">
             {t('reports.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={handleResetFilters} variant="secondary" size="sm" title="Refresh & Reset">
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Refresh</span>
+          <Button onClick={handleResetFilters} variant="secondary" size="sm" title={t('reports.resetFilters')}>
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline font-khmer">{t('reports.resetFilters')}</span>
           </Button>
           <Button onClick={handleExportCsv} variant="primary" size="sm">
             <Download className="w-4 h-4" />
-            <span>{t('common.exportCsv')} (UTF-8 BOM)</span>
+            <span className="font-khmer">{t('common.exportCsv')} (UTF-8 BOM)</span>
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto gap-1">
+      <div className="flex border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto gap-1 no-scrollbar">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = reportType === tab.id
@@ -273,9 +300,9 @@ export function ReportsView() {
                 setReportType(tab.id)
                 setExpandedRows({})
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors font-khmer ${
                 isActive
-                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  ? 'border-amber-500 text-amber-600 dark:border-amber-400 dark:text-amber-400'
                   : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:border-zinc-300'
               }`}
             >
@@ -291,25 +318,25 @@ export function ReportsView() {
         {reportType === 'stock' && (
           <>
             <StatCard
-              label={t('reports.columns.name') || 'Total Products'}
+              label={t('reports.columns.name')}
               value={formatNumber((summaryMetrics as any).totalItems || 0)}
               icon={Boxes}
               variant="default"
             />
             <StatCard
-              label={t('reports.columns.availableStock') || 'Available Stock'}
+              label={t('reports.columns.availableStock')}
               value={formatNumber((summaryMetrics as any).totalAvailable || 0)}
               icon={TrendingUp}
               variant="success"
             />
             <StatCard
-              label={t('reports.columns.inventoryValue') || 'Total Valuation'}
+              label={t('reports.totalValuation')}
               value={formatCurrency((summaryMetrics as any).totalValue || 0, 'USD')}
               icon={ShoppingCart}
               variant="gold"
             />
             <StatCard
-              label="Low / Out of Stock"
+              label={t('reports.lowOrOut')}
               value={formatNumber((summaryMetrics as any).lowOrOut || 0)}
               icon={AlertTriangle}
               variant={(summaryMetrics as any).lowOrOut > 0 ? 'warning' : 'default'}
@@ -320,25 +347,25 @@ export function ReportsView() {
         {reportType === 'movements' && (
           <>
             <StatCard
-              label="Total Movements"
+              label={t('reports.totalMovements')}
               value={formatNumber((summaryMetrics as any).totalMovements || 0)}
               icon={TrendingUp}
               variant="default"
             />
             <StatCard
-              label="Stock In Total"
+              label={t('reports.stockInTotal')}
               value={formatNumber((summaryMetrics as any).totalIn || 0)}
               icon={ArrowDownLeft}
               variant="success"
             />
             <StatCard
-              label="Stock Out Total"
+              label={t('reports.stockOutTotal')}
               value={formatNumber((summaryMetrics as any).totalOut || 0)}
               icon={ArrowUpRight}
               variant="danger"
             />
             <StatCard
-              label="Returns Total"
+              label={t('reports.returnsTotal')}
               value={formatNumber((summaryMetrics as any).totalReturns || 0)}
               icon={RotateCcw}
               variant="warning"
@@ -349,25 +376,25 @@ export function ReportsView() {
         {reportType === 'purchases' && (
           <>
             <StatCard
-              label="Total Spend"
+              label={t('reports.totalSpend')}
               value={formatCurrency((summaryMetrics as any).totalSpent || 0, 'USD')}
               icon={ShoppingCart}
               variant="gold"
             />
             <StatCard
-              label="Purchase Records"
+              label={t('reports.purchaseRecords')}
               value={formatNumber((summaryMetrics as any).totalPurchases || 0)}
               icon={Boxes}
               variant="default"
             />
             <StatCard
-              label="Average Spend"
+              label={t('reports.averageSpend')}
               value={formatCurrency((summaryMetrics as any).avgPurchase || 0, 'USD')}
               icon={TrendingUp}
               variant="default"
             />
             <StatCard
-              label="Suppliers"
+              label={t('reports.suppliers')}
               value={formatNumber(suppliers.length)}
               icon={UserCheck}
               variant="default"
@@ -378,25 +405,25 @@ export function ReportsView() {
         {reportType === 'leftovers' && (
           <>
             <StatCard
-              label="Active Held"
+              label={t('reports.activeHeld')}
               value={formatNumber((summaryMetrics as any).heldCount || 0)}
               icon={Archive}
               variant="warning"
             />
             <StatCard
-              label="Remaining Quantity"
+              label={t('reports.remainingQuantity')}
               value={formatNumber((summaryMetrics as any).totalRemaining || 0)}
               icon={Boxes}
               variant="gold"
             />
             <StatCard
-              label="Fully Collected"
+              label={t('reports.fullyCollected')}
               value={formatNumber((summaryMetrics as any).collectedCount || 0)}
               icon={UserCheck}
               variant="success"
             />
             <StatCard
-              label="Cancelled / Expired"
+              label={t('reports.cancelledExpired')}
               value={formatNumber((summaryMetrics as any).cancelledCount || 0)}
               icon={AlertTriangle}
               variant="default"
@@ -407,13 +434,13 @@ export function ReportsView() {
         {reportType === 'staff' && (
           <>
             <StatCard
-              label="Total Activity Logs"
+              label={t('reports.totalActivity')}
               value={formatNumber((summaryMetrics as any).totalActions || 0)}
               icon={TrendingUp}
               variant="default"
             />
             <StatCard
-              label="Unique Staff"
+              label={t('reports.uniqueStaff')}
               value={formatNumber((summaryMetrics as any).uniqueStaff || 0)}
               icon={UserCheck}
               variant="default"
@@ -423,123 +450,107 @@ export function ReportsView() {
       </div>
 
       {/* Filter and Control Bar */}
-      <div className="bg-white dark:bg-[#121216] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3">
-        {/* Date presets & Search */}
+      <div className="bg-white dark:bg-[#121216] p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+        {/* Row 1: Quick Presets & Search Box */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Quick Date Presets */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
-            <span className="text-zinc-500 font-medium text-[11px] uppercase tracking-wider shrink-0 mr-1">
-              Preset:
+          {/* Quick Presets Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs no-scrollbar">
+            <span className="text-zinc-500 dark:text-zinc-400 font-bold text-[11px] uppercase tracking-wider shrink-0 mr-1 font-khmer">
+              {t('reports.quickPresets')}:
             </span>
             {(['all', 'today', 'yesterday', 'last7days', 'thisMonth'] as DatePreset[]).map((p) => {
-              const labels: Record<DatePreset, string> = {
-                all: 'All Time',
-                today: 'Today',
-                yesterday: 'Yesterday',
-                last7days: 'Last 7 Days',
-                thisMonth: 'This Month',
-                custom: 'Custom',
-              }
               const isActive = datePreset === p
               return (
                 <button
                   key={p}
                   type="button"
                   onClick={() => handlePresetChange(p)}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-khmer transition-all whitespace-nowrap ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                      ? 'bg-amber-500 text-white font-bold shadow-2xs dark:bg-amber-500'
+                      : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   }`}
                 >
-                  {labels[p]}
+                  {t(`reports.presets.${p}`)}
                 </button>
               )
             })}
           </div>
 
           {/* Search box */}
-          <div className="relative min-w-[200px] sm:w-64">
+          <div className="relative w-full md:w-72">
             <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search in report..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              placeholder={t('reports.searchPlaceholder')}
+              className="w-full pl-9 pr-3.5 py-2 text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none transition-all focus:ring-2 focus:ring-amber-400/30 focus:border-amber-500 font-khmer"
             />
           </div>
         </div>
 
-        {/* Date range inputs & tab-specific filters */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="w-36">
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => handleManualStartDate(e.target.value)}
-                placeholder={t('reports.startDate')}
-              />
-            </div>
-            <span className="text-xs text-zinc-400">to</span>
-            <div className="w-36">
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => handleManualEndDate(e.target.value)}
-                placeholder={t('reports.endDate')}
-              />
+        {/* Row 2: Date inputs & Dropdowns */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full lg:w-auto">
+            {/* Date Range Inputs */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-40">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleManualStartDate(e.target.value)}
+                  className="w-full h-[38px] px-3 py-2 text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] text-zinc-900 dark:text-zinc-100 outline-none transition-all focus:ring-2 focus:ring-amber-400/30 focus:border-amber-500"
+                />
+              </div>
+              <span className="text-xs font-medium text-zinc-400 shrink-0 font-khmer">
+                {t('reports.dateTo')}
+              </span>
+              <div className="relative flex-1 sm:w-40">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => handleManualEndDate(e.target.value)}
+                  className="w-full h-[38px] px-3 py-2 text-xs rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#18181D] text-zinc-900 dark:text-zinc-100 outline-none transition-all focus:ring-2 focus:ring-amber-400/30 focus:border-amber-500"
+                />
+              </div>
             </div>
 
-            {/* Tab specific dropdown filters */}
-            {reportType === 'stock' && categories.length > 0 && (
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
-              >
-                <option value="ALL">All Categories</option>
-                {categories.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.nameKm ? `(${c.nameKm})` : ''}
-                  </option>
-                ))}
-              </select>
+            {/* Tab Specific Dropdown Selectors */}
+            {reportType === 'stock' && (
+              <div className="w-full sm:w-56">
+                <Select
+                  options={categoryOptions}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                />
+              </div>
             )}
 
             {reportType === 'movements' && (
-              <select
-                value={selectedMovementType}
-                onChange={(e) => setSelectedMovementType(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
-              >
-                <option value="ALL">All Types</option>
-                <option value="IN">Stock In (IN)</option>
-                <option value="OUT">Stock Out (OUT)</option>
-                <option value="RETURN">Customer Return (RETURN)</option>
-                <option value="ADJUSTMENT">Adjustment (ADJUSTMENT)</option>
-              </select>
+              <div className="w-full sm:w-56">
+                <Select
+                  options={movementTypeOptions}
+                  value={selectedMovementType}
+                  onChange={(e) => setSelectedMovementType(e.target.value)}
+                />
+              </div>
             )}
 
-            {reportType === 'purchases' && suppliers.length > 0 && (
-              <select
-                value={selectedSupplier}
-                onChange={(e) => setSelectedSupplier(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
-              >
-                <option value="ALL">All Suppliers</option>
-                {suppliers.map((s: any) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+            {reportType === 'purchases' && (
+              <div className="w-full sm:w-56">
+                <Select
+                  options={supplierOptions}
+                  value={selectedSupplier}
+                  onChange={(e) => setSelectedSupplier(e.target.value)}
+                />
+              </div>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          {/* Export BOM Notification Note */}
+          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-khmer shrink-0">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{t('reports.exportBomNotice')}</span>
           </div>
         </div>
@@ -549,20 +560,26 @@ export function ReportsView() {
       {isLoading ? (
         <TableLoadingCard />
       ) : error ? (
-        <div className="p-8 text-center bg-white dark:bg-[#121216] rounded-xl border border-rose-200 dark:border-rose-900/50">
+        <div className="p-8 text-center bg-white dark:bg-[#121216] rounded-2xl border border-rose-200 dark:border-rose-900/50 shadow-2xs">
           <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Failed to load report data</p>
-          <Button onClick={() => mutate()} variant="secondary" size="sm" className="mt-3">
-            Retry
+          <p className="text-sm font-semibold text-rose-600 dark:text-rose-400 font-khmer">
+            {t('reports.loadFailed')}
+          </p>
+          <Button onClick={() => mutate()} variant="secondary" size="sm" className="mt-3 font-khmer">
+            {t('reports.retry')}
           </Button>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-[#121216] rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <div className="p-12 text-center bg-white dark:bg-[#121216] rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xs">
           <Boxes className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">No records found for this period</p>
-          <p className="text-xs text-zinc-400 mt-1">Try adjusting your filters or date range</p>
-          <Button onClick={handleResetFilters} variant="secondary" size="sm" className="mt-4">
-            Reset Filters
+          <p className="text-sm font-bold text-zinc-700 dark:text-zinc-200 font-khmer">
+            {t('reports.noRecordsFound')}
+          </p>
+          <p className="text-xs text-zinc-400 mt-1 font-khmer">
+            {t('reports.noRecordsHint')}
+          </p>
+          <Button onClick={handleResetFilters} variant="secondary" size="sm" className="mt-4 font-khmer">
+            {t('reports.resetFilters')}
           </Button>
         </div>
       ) : (
@@ -583,7 +600,7 @@ export function ReportsView() {
                       <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                         {item.name || item.product || item.customerName || item.staff || item.receiptNumber}
                       </p>
-                      {item.nameKm && <p className="text-[11px] text-zinc-400">{item.nameKm}</p>}
+                      {item.nameKm && <p className="text-[11px] text-zinc-400 font-khmer">{item.nameKm}</p>}
                     </div>
                     {item.status ? renderStatusBadge(item.status) : item.type ? renderStatusBadge(item.type) : null}
                   </div>
@@ -592,13 +609,13 @@ export function ReportsView() {
                     {reportType === 'stock' && (
                       <>
                         <div>
-                          <span className="text-zinc-400">Available: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.availableStock')}: </span>
                           <span className="font-semibold text-zinc-800 dark:text-zinc-200">
                             {formatStockQuantity(Number(item.availableStock) || 0, item.unit, item.altUnit, item.conversionRate, (k) => t(k))}
                           </span>
                         </div>
                         <div>
-                          <span className="text-zinc-400">Valuation: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.inventoryValue')}: </span>
                           <span className="font-bold text-zinc-900 dark:text-zinc-100">
                             {formatCurrency(item.inventoryValue || 0, 'USD')}
                           </span>
@@ -609,13 +626,13 @@ export function ReportsView() {
                     {reportType === 'movements' && (
                       <>
                         <div>
-                          <span className="text-zinc-400">Qty: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.quantity')}: </span>
                           <span className="font-semibold text-zinc-800 dark:text-zinc-200">
                             {item.quantity} {item.unit}
                           </span>
                         </div>
                         <div>
-                          <span className="text-zinc-400">Date: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.date')}: </span>
                           <span className="text-zinc-600 dark:text-zinc-400">{item.date}</span>
                         </div>
                       </>
@@ -624,11 +641,11 @@ export function ReportsView() {
                     {reportType === 'purchases' && (
                       <>
                         <div>
-                          <span className="text-zinc-400">Qty: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.quantity')}: </span>
                           <span className="font-semibold">{item.quantity} {item.unit}</span>
                         </div>
                         <div>
-                          <span className="text-zinc-400">Total: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.totalAmount')}: </span>
                           <span className="font-bold text-zinc-900 dark:text-zinc-100">
                             {formatCurrency(item.totalAmount || 0, 'USD')}
                           </span>
@@ -639,11 +656,11 @@ export function ReportsView() {
                     {reportType === 'leftovers' && (
                       <>
                         <div>
-                          <span className="text-zinc-400">Receipt: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.receiptNumber')}: </span>
                           <span className="font-mono">{item.receiptNumber}</span>
                         </div>
                         <div>
-                          <span className="text-zinc-400">Remaining: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.totalRemainingQty')}: </span>
                           <span className="font-bold">{item.totalRemainingQty}</span>
                         </div>
                       </>
@@ -652,11 +669,11 @@ export function ReportsView() {
                     {reportType === 'staff' && (
                       <>
                         <div>
-                          <span className="text-zinc-400">Action: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.action')}: </span>
                           <span className="font-semibold">{item.action}</span>
                         </div>
                         <div>
-                          <span className="text-zinc-400">Time: </span>
+                          <span className="text-zinc-400 font-khmer">{t('reports.columns.timestamp')}: </span>
                           <span>{item.timestamp}</span>
                         </div>
                       </>
@@ -667,52 +684,52 @@ export function ReportsView() {
                   <button
                     type="button"
                     onClick={() => toggleRow(rowId)}
-                    className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 pt-1 font-medium"
+                    className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 pt-1 font-semibold font-khmer"
                   >
                     {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    <span>{isExpanded ? 'Less details' : 'More details'}</span>
+                    <span>{isExpanded ? t('reports.lessDetails') : t('reports.moreDetails')}</span>
                   </button>
 
                   {isExpanded && (
-                    <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-[11px] space-y-1 text-zinc-600 dark:text-zinc-400">
+                    <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-lg text-[11px] space-y-1 text-zinc-600 dark:text-zinc-400 font-khmer">
                       {reportType === 'stock' && (
                         <>
-                          <p>Physical Stock: {item.physicalStock} {item.unit}</p>
-                          <p>Customer Reserved: {item.reservedStock} {item.unit}</p>
-                          <p>Unit Purchase Cost: {formatCurrency(item.costPerUnit || 0, 'USD')}</p>
-                          <p>Category: {item.category}</p>
+                          <p>{t('reports.columns.physicalStock')}: {item.physicalStock} {item.unit}</p>
+                          <p>{t('reports.columns.reservedStock')}: {item.reservedStock} {item.unit}</p>
+                          <p>{t('reports.columns.costPerUnit')}: {formatCurrency(item.costPerUnit || 0, 'USD')}</p>
+                          <p>{t('reports.columns.category')}: {item.category}</p>
                         </>
                       )}
                       {reportType === 'movements' && (
                         <>
-                          <p>Previous Balance: {item.previousBalance}</p>
-                          <p>Resulting Balance: {item.resultingBalance}</p>
-                          <p>Reference: {item.reference}</p>
-                          <p>Reason: {item.reason}</p>
-                          <p>Recorded By: {item.recordedBy}</p>
+                          <p>{t('reports.columns.previousBalance')}: {item.previousBalance}</p>
+                          <p>{t('reports.columns.resultingBalance')}: {item.resultingBalance}</p>
+                          <p>{t('reports.columns.reference')}: {item.reference}</p>
+                          <p>{t('reports.columns.reason')}: {item.reason}</p>
+                          <p>{t('reports.columns.recordedBy')}: {item.recordedBy}</p>
                         </>
                       )}
                       {reportType === 'purchases' && (
                         <>
-                          <p>Supplier: {item.supplier}</p>
-                          <p>Unit Cost: {formatCurrency(item.unitCost || 0, 'USD')}</p>
-                          <p>Invoice #: {item.invoiceNumber}</p>
-                          <p>Date: {item.date}</p>
+                          <p>{t('reports.columns.supplier')}: {item.supplier}</p>
+                          <p>{t('reports.columns.unitCost')}: {formatCurrency(item.unitCost || 0, 'USD')}</p>
+                          <p>{t('reports.columns.invoiceNumber')}: {item.invoiceNumber}</p>
+                          <p>{t('reports.columns.date')}: {item.date}</p>
                         </>
                       )}
                       {reportType === 'leftovers' && (
                         <>
-                          <p>Customer Phone: {item.customerPhone}</p>
-                          <p>Storage Location: {item.storageLocation}</p>
-                          <p>Item Types: {item.itemsCount}</p>
-                          <p>Stored Date: {item.storedDate}</p>
-                          <p>Staff: {item.recordedBy}</p>
+                          <p>{t('reports.columns.customerPhone')}: {item.customerPhone}</p>
+                          <p>{t('reports.columns.storageLocation')}: {item.storageLocation}</p>
+                          <p>{t('reports.columns.itemsCount')}: {item.itemsCount}</p>
+                          <p>{t('reports.columns.storedDate')}: {item.storedDate}</p>
+                          <p>{t('reports.columns.recordedBy')}: {item.recordedBy}</p>
                         </>
                       )}
                       {reportType === 'staff' && (
                         <>
-                          <p>Record: {item.entity}</p>
-                          <p>Details: {item.details}</p>
+                          <p>{t('reports.columns.entity')}: {item.entity}</p>
+                          <p>{t('reports.columns.details')}: {item.details}</p>
                         </>
                       )}
                     </div>
@@ -726,7 +743,7 @@ export function ReportsView() {
           <div className="hidden sm:block">
             <ScrollableTable>
               <table className="w-full text-left text-xs min-w-[850px]">
-                <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10">
+                <thead className="bg-[#F8FAFC] dark:bg-[#18181D] text-zinc-500 dark:text-zinc-400 font-bold border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10 font-khmer">
                   <tr>
                     <th className="px-3 py-3 w-8"></th>
                     {reportType === 'stock' && (
@@ -793,20 +810,20 @@ export function ReportsView() {
                             <button
                               type="button"
                               onClick={() => toggleRow(rowId)}
-                              className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                              title="Toggle details"
+                              className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                              title={t('reports.moreDetails')}
                             >
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-amber-500" /> : <ChevronDown className="w-3.5 h-3.5" />}
                             </button>
                           </td>
 
                           {reportType === 'stock' && (
                             <>
                               <td className="px-4 py-3">
-                                <div className="font-medium text-zinc-900 dark:text-zinc-100">{row.name}</div>
-                                {row.nameKm && <div className="text-[11px] text-zinc-400">{row.nameKm}</div>}
+                                <div className="font-semibold text-zinc-900 dark:text-zinc-100">{row.name}</div>
+                                {row.nameKm && <div className="text-[11px] text-zinc-400 font-khmer">{row.nameKm}</div>}
                               </td>
-                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.category}</td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-khmer">{row.category}</td>
                               <td className="px-4 py-3 text-right font-medium text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                                 {formatStockQuantity(Number(row.availableStock) || 0, row.unit, row.altUnit, row.conversionRate, (k) => t(k))}
                               </td>
@@ -825,24 +842,24 @@ export function ReportsView() {
                           {reportType === 'movements' && (
                             <>
                               <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.date}</td>
-                              <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{row.product}</td>
+                              <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{row.product}</td>
                               <td className="px-4 py-3 text-center whitespace-nowrap">{renderStatusBadge(row.type)}</td>
-                              <td className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                              <td className="px-4 py-3 text-right font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                                 {row.quantity} {row.unit}
                               </td>
                               <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
                                 {row.previousBalance} → <span className="font-bold text-zinc-900 dark:text-zinc-100">{row.resultingBalance}</span>
                               </td>
-                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.recordedBy}</td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap font-khmer">{row.recordedBy}</td>
                             </>
                           )}
 
                           {reportType === 'purchases' && (
                             <>
                               <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.date}</td>
-                              <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{row.product}</td>
-                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{row.supplier}</td>
-                              <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">
+                              <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{row.product}</td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-khmer">{row.supplier}</td>
+                              <td className="px-4 py-3 text-right font-bold whitespace-nowrap">
                                 {row.quantity} {row.unit}
                               </td>
                               <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
@@ -860,7 +877,7 @@ export function ReportsView() {
                                 {row.receiptNumber}
                               </td>
                               <td className="px-4 py-3">
-                                <div className="font-medium text-zinc-900 dark:text-zinc-100">{row.customerName}</div>
+                                <div className="font-semibold text-zinc-900 dark:text-zinc-100">{row.customerName}</div>
                                 <div className="text-[11px] text-zinc-400">{row.customerPhone}</div>
                               </td>
                               <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400">{row.itemsCount}</td>
@@ -877,11 +894,11 @@ export function ReportsView() {
                           {reportType === 'staff' && (
                             <>
                               <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.timestamp}</td>
-                              <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100 whitespace-nowrap">{row.staff}</td>
+                              <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100 whitespace-nowrap font-khmer">{row.staff}</td>
                               <td className="px-4 py-3 text-center whitespace-nowrap">
                                 <Badge variant="neutral">{row.action}</Badge>
                               </td>
-                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.entity}</td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap font-khmer">{row.entity}</td>
                               <td className="px-4 py-3 text-zinc-500 max-w-xs truncate">{row.details}</td>
                             </>
                           )}
@@ -889,25 +906,25 @@ export function ReportsView() {
 
                         {/* Expandable detail row */}
                         {isExpanded && (
-                          <tr className="bg-zinc-50/60 dark:bg-zinc-900/60 text-xs">
+                          <tr className="bg-zinc-50/70 dark:bg-zinc-900/70 text-xs">
                             <td colSpan={7} className="px-6 py-3 border-t border-dashed border-zinc-200 dark:border-zinc-800">
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-1 text-zinc-600 dark:text-zinc-400">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-1 text-zinc-600 dark:text-zinc-400 font-khmer">
                                 {reportType === 'stock' && (
                                   <>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Physical Stock:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.physicalStock')}:</span>{' '}
                                       {row.physicalStock} {row.unit}
                                     </div>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Customer Reserved:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.reservedStock')}:</span>{' '}
                                       {row.reservedStock} {row.unit}
                                     </div>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Purchase Unit:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.purchaseUnit')}:</span>{' '}
                                       {row.purchaseUnit}
                                     </div>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Package Purchase Cost:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.purchaseCost')}:</span>{' '}
                                       {formatCurrency(row.purchaseCost || 0, 'USD')}
                                     </div>
                                   </>
@@ -915,15 +932,15 @@ export function ReportsView() {
                                 {reportType === 'movements' && (
                                   <>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Reference:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.reference')}:</span>{' '}
                                       {row.reference || '—'}
                                     </div>
                                     <div className="col-span-2">
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Reason / Notes:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.reason')}:</span>{' '}
                                       {row.reason || '—'}
                                     </div>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Previous Balance:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.previousBalance')}:</span>{' '}
                                       {row.previousBalance}
                                     </div>
                                   </>
@@ -931,11 +948,11 @@ export function ReportsView() {
                                 {reportType === 'purchases' && (
                                   <>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Invoice Number:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.invoiceNumber')}:</span>{' '}
                                       {row.invoiceNumber || '—'}
                                     </div>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Currency:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.currency')}:</span>{' '}
                                       {row.currency || 'USD'}
                                     </div>
                                   </>
@@ -943,18 +960,18 @@ export function ReportsView() {
                                 {reportType === 'leftovers' && (
                                   <>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Storage Location:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.storageLocation')}:</span>{' '}
                                       {row.storageLocation || 'Main Storage'}
                                     </div>
                                     <div>
-                                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">Recorded By:</span>{' '}
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.recordedBy')}:</span>{' '}
                                       {row.recordedBy || 'Staff'}
                                     </div>
                                   </>
                                 )}
                                 {reportType === 'staff' && (
                                   <div className="col-span-4">
-                                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">Full Details:</span>{' '}
+                                    <span className="font-bold text-zinc-700 dark:text-zinc-300">{t('reports.columns.details')}:</span>{' '}
                                     {row.details || '—'}
                                   </div>
                                 )}
@@ -968,12 +985,12 @@ export function ReportsView() {
                 </tbody>
 
                 {/* Table Totals Row */}
-                <tfoot className="bg-zinc-100/80 dark:bg-zinc-800/80 font-bold border-t-2 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100">
+                <tfoot className="bg-zinc-100/90 dark:bg-zinc-800/90 font-bold border-t-2 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-khmer">
                   <tr>
                     <td className="px-3 py-3 text-center">Σ</td>
                     {reportType === 'stock' && (
                       <>
-                        <td className="px-4 py-3">Totals ({filteredItems.length} products)</td>
+                        <td className="px-4 py-3">{t('common.all')} ({filteredItems.length} {t('reports.columns.name')})</td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3 text-right">
                           {formatNumber((summaryMetrics as any).totalAvailable || 0)}
@@ -987,7 +1004,7 @@ export function ReportsView() {
                     )}
                     {reportType === 'movements' && (
                       <>
-                        <td className="px-4 py-3">Total ({filteredItems.length} movements)</td>
+                        <td className="px-4 py-3">{t('reports.totalMovements')} ({filteredItems.length})</td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3 text-right"></td>
@@ -997,7 +1014,7 @@ export function ReportsView() {
                     )}
                     {reportType === 'purchases' && (
                       <>
-                        <td className="px-4 py-3">Total ({filteredItems.length} purchases)</td>
+                        <td className="px-4 py-3">{t('reports.purchaseRecords')} ({filteredItems.length})</td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3"></td>
@@ -1009,7 +1026,7 @@ export function ReportsView() {
                     )}
                     {reportType === 'leftovers' && (
                       <>
-                        <td className="px-4 py-3">Total ({filteredItems.length} records)</td>
+                        <td className="px-4 py-3">{t('customerLeftovers.title')} ({filteredItems.length})</td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3 text-right">
@@ -1021,7 +1038,7 @@ export function ReportsView() {
                     )}
                     {reportType === 'staff' && (
                       <>
-                        <td className="px-4 py-3">Total ({filteredItems.length} logs)</td>
+                        <td className="px-4 py-3">{t('reports.totalActivity')} ({filteredItems.length})</td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3"></td>
                         <td className="px-4 py-3"></td>
