@@ -117,7 +117,7 @@ export function isGoogleSheetsConfigured(): boolean {
 
 let _sheetsClient: sheets_v4.Sheets | null = null
 
-function getSheetsClient(): sheets_v4.Sheets {
+export function getSheetsClient(): sheets_v4.Sheets {
   if (_sheetsClient) return _sheetsClient
 
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
