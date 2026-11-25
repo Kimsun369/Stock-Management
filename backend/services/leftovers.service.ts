@@ -1,6 +1,8 @@
 import {
   getAllRows,
   appendRow,
+  appendRows,
+  getMultipleSheets,
   updateRowById,
   appendAuditLog,
   generateReceiptNumber,
@@ -22,11 +24,14 @@ export async function getCustomerRecords(filters?: {
   page?: number
   limit?: number
 }): Promise<{ records: CustomerRecordWithItems[]; total: number; page: number; totalPages: number }> {
-  const [recordRows, itemRows, userRows] = await Promise.all([
-    getAllRows(SHEETS.CustomerRecords),
-    getAllRows(SHEETS.CustomerItems),
-    getAllRows(SHEETS.Users),
+  const batch = await getMultipleSheets([
+    SHEETS.CustomerRecords,
+    SHEETS.CustomerItems,
+    SHEETS.Users,
   ])
+  const recordRows = batch[SHEETS.CustomerRecords]
+  const itemRows = batch[SHEETS.CustomerItems]
+  const userRows = batch[SHEETS.Users]
 
   const userMap = new Map(userRows.map((u) => [u.id, u.name]))
 
@@ -217,15 +222,16 @@ export async function registerCustomerLeftover(params: {
   const recordId = generateId()
   const recordNumber = generateReceiptNumber()
 
-  // 2. Record customer-held items without changing inventory balances.
+  // 2. Record customer-held items in a single batched multi-row append.
   const createdItems: CustomerItem[] = []
+  const itemRowsToAppend: string[][] = []
 
   for (const item of params.items) {
     const product = productMap.get(item.productId)!
     const itemId = generateId()
     const itemUnit = item.unit || product.unit || 'can'
 
-    await appendRow(SHEETS.CustomerItems, [
+    itemRowsToAppend.push([
       itemId,
       recordId,
       product.id,
@@ -250,6 +256,11 @@ export async function registerCustomerLeftover(params: {
       createdAt: now,
       updatedAt: now,
     })
+  }
+
+  // Single values.append call for all items (replaces N sequential per-row calls)
+  if (itemRowsToAppend.length > 0) {
+    await appendRows(SHEETS.CustomerItems, itemRowsToAppend)
   }
 
   // 3. Create CustomerRecord
@@ -330,6 +341,8 @@ export async function recordCustomerCollection(params: {
   }
 
   // 2. Process collections: update customer items & release reserved stock
+  const collectionTxRows: string[][] = []
+
   for (const col of params.collections) {
     if (col.quantity <= 0) continue
     const item = record.items.find((it) => it.id === col.itemId)!
@@ -354,10 +367,8 @@ export async function recordCustomerCollection(params: {
       })
     }
 
-    // Append CollectionTransaction
-    const txId = generateId()
-    await appendRow(SHEETS.CollectionTransactions, [
-      txId,
+    collectionTxRows.push([
+      generateId(),
       record.id,
       item.id,
       item.productId,
@@ -366,6 +377,11 @@ export async function recordCustomerCollection(params: {
       params.notes || '',
       now,
     ])
+  }
+
+  // Single batched append for all collection transactions
+  if (collectionTxRows.length > 0) {
+    await appendRows(SHEETS.CollectionTransactions, collectionTxRows)
   }
 
   // 3. Determine updated status

@@ -144,20 +144,39 @@ function getSpreadsheetId(): string {
 
 // ─── Retry Helper ────────────────────────────────────────────────────────────
 
-async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): Promise<T> {
-  let lastError: unknown
-  for (let i = 0; i < retries; i++) {
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, baseDelayMs = 500): Promise<T> {
+  let lastError: any
+  for (let attempt = 0; attempt < retries; attempt++) {
     try {
       return await fn()
     } catch (err: any) {
       lastError = err
-      if (err?.response?.status === 429 || err?.code === 429) {
-        const wait = delayMs * Math.pow(2, i) + Math.random() * 200
-        await new Promise((r) => setTimeout(r, wait))
+      const status = err?.response?.status || err?.status || err?.code
+      const message = err?.message || ''
+
+      const isRateLimit = status === 429 || message.includes('RESOURCE_EXHAUSTED') || message.includes('Quota exceeded')
+      const isServerError = status >= 500 && status < 600
+      const isTransientNetwork = message.includes('ECONNRESET') || message.includes('ETIMEDOUT') || message.includes('fetch failed')
+
+      if ((isRateLimit || isServerError || isTransientNetwork) && attempt < retries - 1) {
+        // Exponential backoff with full jitter, capped under Vercel function timeout
+        const backoff = Math.min(2500, baseDelayMs * Math.pow(2, attempt))
+        const jitter = Math.random() * 300
+        const totalWait = backoff + jitter
+        await new Promise((r) => setTimeout(r, totalWait))
         continue
       }
-      throw err
+      break
     }
+  }
+
+  const finalStatus = lastError?.response?.status || lastError?.status || lastError?.code
+  const finalMessage = lastError?.message || ''
+  if (finalStatus === 429 || finalMessage.includes('RESOURCE_EXHAUSTED') || finalMessage.includes('Quota exceeded')) {
+    throw new Error('System is busy, please try again in a few seconds.')
+  }
+  if (finalStatus >= 500 && finalStatus < 600) {
+    throw new Error('Google Sheets temporary server error. Please try again in a moment.')
   }
   throw lastError
 }
@@ -178,6 +197,7 @@ export function invalidateCache(sheetName?: SheetName) {
 
 /**
  * Get all data rows from a sheet as an array of key-value objects.
+ * Reads only the needed column range based on SHEET_HEADERS.
  */
 export async function getAllRows(sheetName: SheetName): Promise<SheetRow[]> {
   if (!isGoogleSheetsConfigured()) {
@@ -192,10 +212,11 @@ export async function getAllRows(sheetName: SheetName): Promise<SheetRow[]> {
   return withRetry(async () => {
     const sheets = getSheetsClient()
     const spreadsheetId = getSpreadsheetId()
+    const lastCol = columnLetter(SHEET_HEADERS[sheetName].length)
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:ZZ`,
+      range: `${sheetName}!A:${lastCol}`,
     })
 
     const rows = response.data.values ?? []
@@ -228,33 +249,127 @@ export async function getAllRows(sheetName: SheetName): Promise<SheetRow[]> {
 }
 
 /**
- * Append a new row to the sheet.
+ * Reads multiple sheets using ONE values.batchGet call.
+ * Uses cached data for sheets within TTL, and batches all uncached sheets into a single request.
  */
-export async function appendRow(sheetName: SheetName, values: string[]): Promise<void> {
+export async function getMultipleSheets<T extends SheetName>(
+  sheetNames: T[]
+): Promise<Record<T, SheetRow[]>> {
+  const result: Partial<Record<T, SheetRow[]>> = {}
+  const uncachedSheets: T[] = []
+
+  for (const name of sheetNames) {
+    const cached = rowCache.get(name)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      result[name] = cached.data
+    } else {
+      uncachedSheets.push(name)
+    }
+  }
+
+  if (uncachedSheets.length === 0) {
+    return result as Record<T, SheetRow[]>
+  }
+
   if (!isGoogleSheetsConfigured()) {
-    const headers = SHEET_HEADERS[sheetName]
-    const rowObj: SheetRow = {}
-    headers.forEach((h, i) => {
-      rowObj[h] = values[i] ?? ''
-    })
-    const existing = readLocalSheet(sheetName)
-    existing.push(rowObj)
-    writeLocalSheet(sheetName, existing)
-    return
+    for (const name of uncachedSheets) {
+      const data = readLocalSheet(name)
+      result[name] = data
+      rowCache.set(name, { timestamp: Date.now(), data })
+    }
+    return result as Record<T, SheetRow[]>
   }
 
   await withRetry(async () => {
     const sheets = getSheetsClient()
     const spreadsheetId = getSpreadsheetId()
 
+    const ranges = uncachedSheets.map((name) => {
+      const lastCol = columnLetter(SHEET_HEADERS[name].length)
+      return `${name}!A:${lastCol}`
+    })
+
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges,
+    })
+
+    const valueRanges = response.data.valueRanges || []
+    uncachedSheets.forEach((name, idx) => {
+      const rows = valueRanges[idx]?.values ?? []
+      if (rows.length < 2) {
+        rowCache.set(name, { timestamp: Date.now(), data: [] })
+        result[name] = []
+        return
+      }
+
+      const headers = (rows[0] as string[]).map((h) => h.trim())
+      const expectedHeaders = SHEET_HEADERS[name] || []
+      const sheetData = rows
+        .slice(1)
+        .filter((row) => (row as string[]).some(Boolean))
+        .map((row) => {
+          const obj: SheetRow = {}
+          headers.forEach((header, i) => {
+            obj[header] = (row as string[])[i] ?? ''
+          })
+          expectedHeaders.forEach((h) => {
+            if (obj[h] === undefined) {
+              obj[h] = ''
+            }
+          })
+          return obj
+        })
+
+      rowCache.set(name, { timestamp: Date.now(), data: sheetData })
+      result[name] = sheetData
+    })
+  })
+
+  return result as Record<T, SheetRow[]>
+}
+
+/**
+ * Append multiple rows to the sheet in a single API call.
+ */
+export async function appendRows(sheetName: SheetName, rows: string[][]): Promise<void> {
+  if (rows.length === 0) return
+
+  if (!isGoogleSheetsConfigured()) {
+    const headers = SHEET_HEADERS[sheetName]
+    const existing = readLocalSheet(sheetName)
+    for (const values of rows) {
+      const rowObj: SheetRow = {}
+      headers.forEach((h, i) => {
+        rowObj[h] = values[i] ?? ''
+      })
+      existing.push(rowObj)
+    }
+    writeLocalSheet(sheetName, existing)
+    invalidateCache(sheetName)
+    return
+  }
+
+  await withRetry(async () => {
+    const sheets = getSheetsClient()
+    const spreadsheetId = getSpreadsheetId()
+    const lastCol = columnLetter(SHEET_HEADERS[sheetName].length)
+
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!A:A`,
+      range: `${sheetName}!A1:${lastCol}1`,
       valueInputOption: 'RAW',
-      requestBody: { values: [values] },
+      requestBody: { values: rows },
     })
   })
   invalidateCache(sheetName)
+}
+
+/**
+ * Append a single new row to the sheet.
+ */
+export async function appendRow(sheetName: SheetName, values: string[]): Promise<void> {
+  return appendRows(sheetName, [values])
 }
 
 /**

@@ -1,4 +1,4 @@
-import { getAllRows, appendRow, updateRowById, deleteRowById, appendAuditLog, generateId, SHEETS } from '@/backend/sheets'
+import { getAllRows, appendRow, updateRowById, deleteRowById, appendAuditLog, generateId, getMultipleSheets, SHEETS } from '@/backend/sheets'
 import { Product, ProductWithDetails } from '@/backend/types'
 import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 import { beerCategoryIds, canonicalBeerCategoryId } from '@/backend/category-utils'
@@ -10,12 +10,16 @@ export async function getProducts(filters?: {
   page?: number
   limit?: number
 }): Promise<{ products: ProductWithDetails[]; total: number; page: number; totalPages: number }> {
-  const [productRows, categoryRows, supplierRows, customerItemRows] = await Promise.all([
-    getAllRows(SHEETS.Products),
-    getAllRows(SHEETS.Categories),
-    getAllRows(SHEETS.Suppliers),
-    getAllRows(SHEETS.CustomerItems),
+  const batch = await getMultipleSheets([
+    SHEETS.Products,
+    SHEETS.Categories,
+    SHEETS.Suppliers,
+    SHEETS.CustomerItems,
   ])
+  const productRows = batch[SHEETS.Products]
+  const categoryRows = batch[SHEETS.Categories]
+  const supplierRows = batch[SHEETS.Suppliers]
+  const customerItemRows = batch[SHEETS.CustomerItems]
 
   const catMap = new Map(categoryRows.map((c) => [c.id, c]))
   const beerIds = beerCategoryIds(categoryRows)
@@ -111,12 +115,16 @@ export async function getProducts(filters?: {
 }
 
 export async function getProductById(id: string): Promise<ProductWithDetails | null> {
-  const [productRows, categoryRows, supplierRows, customerItemRows] = await Promise.all([
-    getAllRows(SHEETS.Products),
-    getAllRows(SHEETS.Categories),
-    getAllRows(SHEETS.Suppliers),
-    getAllRows(SHEETS.CustomerItems),
+  const batch = await getMultipleSheets([
+    SHEETS.Products,
+    SHEETS.Categories,
+    SHEETS.Suppliers,
+    SHEETS.CustomerItems,
   ])
+  const productRows = batch[SHEETS.Products]
+  const categoryRows = batch[SHEETS.Categories]
+  const supplierRows = batch[SHEETS.Suppliers]
+  const customerItemRows = batch[SHEETS.CustomerItems]
 
   const p = productRows.find((row) => row.id === id || row.sku === id)
   if (!p) return null

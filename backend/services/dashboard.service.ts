@@ -1,4 +1,4 @@
-import { getAllRows, SHEETS } from '@/backend/sheets'
+import { getMultipleSheets, SHEETS } from '@/backend/sheets'
 import { DashboardMetrics, StockTransaction, CustomerRecordWithItems, TransactionType, LeftoverStatus } from '@/backend/types'
 import { maskPhoneNumber } from '@/backend/phone'
 
@@ -9,15 +9,23 @@ export async function getDashboardMetrics(selectedPeriod: DashboardPeriod = 'thi
   purchaseTrendChart: Array<{ period: string; spend: number }>
   categoryStockChart: Array<{ name: string; nameKm: string; count: number; units: number; percentage: number }>
 }> {
-  const [productRows, catRows, txRows, leftoverRows, itemRows, purRows, userRows] = await Promise.all([
-    getAllRows(SHEETS.Products),
-    getAllRows(SHEETS.Categories),
-    getAllRows(SHEETS.StockTransactions),
-    getAllRows(SHEETS.CustomerRecords),
-    getAllRows(SHEETS.CustomerItems),
-    getAllRows(SHEETS.PurchaseRecords),
-    getAllRows(SHEETS.Users),
+  // Read all needed sheets in ONE batched values.batchGet call
+  const batch = await getMultipleSheets([
+    SHEETS.Products,
+    SHEETS.Categories,
+    SHEETS.StockTransactions,
+    SHEETS.CustomerRecords,
+    SHEETS.CustomerItems,
+    SHEETS.PurchaseRecords,
+    SHEETS.Users,
   ])
+  const productRows = batch[SHEETS.Products]
+  const catRows = batch[SHEETS.Categories]
+  const txRows = batch[SHEETS.StockTransactions]
+  const leftoverRows = batch[SHEETS.CustomerRecords]
+  const itemRows = batch[SHEETS.CustomerItems]
+  const purRows = batch[SHEETS.PurchaseRecords]
+  const userRows = batch[SHEETS.Users]
 
   // Active products & stock totals
   const activeProducts = productRows.filter((p) => p.active === 'true')

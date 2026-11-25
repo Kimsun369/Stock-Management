@@ -1,4 +1,4 @@
-import { getAllRows, SHEETS } from '@/backend/sheets'
+import { getAllRows, getMultipleSheets, SHEETS } from '@/backend/sheets'
 import { getStockLedger } from '@/backend/services/inventory.service'
 import { getProducts } from '@/backend/services/products.service'
 import { getCustomerRecords } from '@/backend/services/leftovers.service'
@@ -50,12 +50,16 @@ export async function getReportData(params: {
   }
 
   if (type === 'purchases') {
-    const [purRows, prodRows, supRows, categoryRows] = await Promise.all([
-      getAllRows(SHEETS.PurchaseRecords),
-      getAllRows(SHEETS.Products),
-      getAllRows(SHEETS.Suppliers),
-      getAllRows(SHEETS.Categories),
+    const batch = await getMultipleSheets([
+      SHEETS.PurchaseRecords,
+      SHEETS.Products,
+      SHEETS.Suppliers,
+      SHEETS.Categories,
     ])
+    const purRows = batch[SHEETS.PurchaseRecords]
+    const prodRows = batch[SHEETS.Products]
+    const supRows = batch[SHEETS.Suppliers]
+    const categoryRows = batch[SHEETS.Categories]
     const categoryMap = new Map(categoryRows.map((c) => [c.id, `${c.name || ''} ${c.nameKm || ''}`]))
     const prodMap = new Map(prodRows.map((p) => [p.id, normalizeUnitPair(p, categoryMap.get(p.categoryId) || '')]))
     const supMap = new Map(supRows.map((s) => [s.id, s.name]))

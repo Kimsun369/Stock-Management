@@ -1,4 +1,4 @@
-import { getAllRows, appendRow, updateRowById, appendAuditLog, getRowById, invalidateCache, SHEETS } from '@/backend/sheets'
+import { getAllRows, appendRow, appendRows, updateRowById, appendAuditLog, getRowById, getMultipleSheets, invalidateCache, SHEETS } from '@/backend/sheets'
 import { StockTransaction, Product, TransactionType } from '@/backend/types'
 import { configuredPurchaseCost, normalizeUnitPair } from '@/backend/unit-config'
 
@@ -10,12 +10,16 @@ export async function getStockLedger(filters?: {
   limit?: number
   offset?: number
 }): Promise<StockTransaction[]> {
-  const [txRows, productRows, userRows, categoryRows] = await Promise.all([
-    getAllRows(SHEETS.StockTransactions),
-    getAllRows(SHEETS.Products),
-    getAllRows(SHEETS.Users),
-    getAllRows(SHEETS.Categories),
+  const batch = await getMultipleSheets([
+    SHEETS.StockTransactions,
+    SHEETS.Products,
+    SHEETS.Users,
+    SHEETS.Categories,
   ])
+  const txRows = batch[SHEETS.StockTransactions]
+  const productRows = batch[SHEETS.Products]
+  const userRows = batch[SHEETS.Users]
+  const categoryRows = batch[SHEETS.Categories]
 
   const categoryMap = new Map(categoryRows.map((c) => [c.id, `${c.name || ''} ${c.nameKm || ''}`]))
   const productMap = new Map(productRows.map((p) => [p.id, normalizeUnitPair(p, categoryMap.get(p.categoryId) || '')]))

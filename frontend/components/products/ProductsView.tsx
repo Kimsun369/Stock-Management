@@ -70,7 +70,7 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
 
   // Match the Inventory ledger's page size so both views render the same backend rows.
   const apiUrl = `/api/products?search=${encodeURIComponent(search)}&categoryId=${categoryId}&status=${status}&page=${page}&limit=500`
-  const { data, isLoading, mutate } = useSWR(apiUrl, fetcher, { refreshInterval: 30000 })
+  const { data, isLoading, mutate } = useSWR(apiUrl, fetcher)
   const { data: categories } = useSWR('/api/categories', fetcher)
 
   const categoryList = Array.isArray(categories) ? categories : []

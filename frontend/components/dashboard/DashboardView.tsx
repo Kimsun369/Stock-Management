@@ -42,7 +42,7 @@ export function DashboardView() {
   const [period, setPeriod] = useState<PeriodType>('thisMonth')
 
   const { data, error, isLoading, mutate } = useSWR(`/api/dashboard?period=${period}`, fetcher, {
-    refreshInterval: 30000,
+    refreshInterval: 60000,
   })
 
   if (isLoading) {
