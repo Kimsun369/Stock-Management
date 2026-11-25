@@ -597,10 +597,25 @@ export function ReportsView() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                        {item.name || item.product || item.customerName || item.staff || item.receiptNumber}
-                      </p>
-                      {item.nameKm && <p className="text-[11px] text-zinc-400 font-khmer">{item.nameKm}</p>}
+                      {language === 'km' ? (
+                        <>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 font-khmer">
+                            {item.nameKm || item.productKm || item.name || item.product || item.customerName || item.staff || item.receiptNumber}
+                          </p>
+                          {(item.nameKm || item.productKm) && (item.name || item.product) && (
+                            <p className="text-[11px] text-zinc-400 font-medium">{item.name || item.product}</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                            {item.name || item.product || item.customerName || item.staff || item.receiptNumber}
+                          </p>
+                          {(item.nameKm || item.productKm) && (
+                            <p className="text-[11px] text-zinc-400 font-khmer">{item.nameKm || item.productKm}</p>
+                          )}
+                        </>
+                      )}
                     </div>
                     {item.status ? renderStatusBadge(item.status) : item.type ? renderStatusBadge(item.type) : null}
                   </div>
@@ -820,10 +835,33 @@ export function ReportsView() {
                           {reportType === 'stock' && (
                             <>
                               <td className="px-4 py-3">
-                                <div className="font-semibold text-zinc-900 dark:text-zinc-100">{row.name}</div>
-                                {row.nameKm && <div className="text-[11px] text-zinc-400 font-khmer">{row.nameKm}</div>}
+                                {language === 'km' ? (
+                                  <div>
+                                    <div className="font-bold text-zinc-900 dark:text-zinc-100 font-khmer text-xs sm:text-sm tracking-wide">
+                                      {row.nameKm || row.name}
+                                    </div>
+                                    {row.nameKm && row.name && (
+                                      <div className="text-[11px] text-zinc-400 font-medium">
+                                        {row.name}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">
+                                      {row.name}
+                                    </div>
+                                    {row.nameKm && (
+                                      <div className="text-[11px] text-zinc-400 font-khmer">
+                                        {row.nameKm}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </td>
-                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-khmer">{row.category}</td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-khmer font-medium">
+                                {language === 'km' && row.categoryKm ? row.categoryKm : row.category}
+                              </td>
                               <td className="px-4 py-3 text-right font-medium text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                                 {formatStockQuantity(Number(row.availableStock) || 0, row.unit, row.altUnit, row.conversionRate, (k) => t(k))}
                               </td>
@@ -842,7 +880,27 @@ export function ReportsView() {
                           {reportType === 'movements' && (
                             <>
                               <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.date}</td>
-                              <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{row.product}</td>
+                              <td className="px-4 py-3">
+                                {language === 'km' ? (
+                                  <div>
+                                    <div className="font-bold text-zinc-900 dark:text-zinc-100 font-khmer text-xs sm:text-sm">
+                                      {row.productKm || row.product}
+                                    </div>
+                                    {row.productKm && row.product && (
+                                      <div className="text-[11px] text-zinc-400 font-medium">{row.product}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">
+                                      {row.product}
+                                    </div>
+                                    {row.productKm && (
+                                      <div className="text-[11px] text-zinc-400 font-khmer">{row.productKm}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
                               <td className="px-4 py-3 text-center whitespace-nowrap">{renderStatusBadge(row.type)}</td>
                               <td className="px-4 py-3 text-right font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
                                 {row.quantity} {row.unit}
@@ -857,7 +915,27 @@ export function ReportsView() {
                           {reportType === 'purchases' && (
                             <>
                               <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{row.date}</td>
-                              <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{row.product}</td>
+                              <td className="px-4 py-3">
+                                {language === 'km' ? (
+                                  <div>
+                                    <div className="font-bold text-zinc-900 dark:text-zinc-100 font-khmer text-xs sm:text-sm">
+                                      {row.productKm || row.product}
+                                    </div>
+                                    {row.productKm && row.product && (
+                                      <div className="text-[11px] text-zinc-400 font-medium">{row.product}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm">
+                                      {row.product}
+                                    </div>
+                                    {row.productKm && (
+                                      <div className="text-[11px] text-zinc-400 font-khmer">{row.productKm}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
                               <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-khmer">{row.supplier}</td>
                               <td className="px-4 py-3 text-right font-bold whitespace-nowrap">
                                 {row.quantity} {row.unit}

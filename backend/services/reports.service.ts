@@ -17,8 +17,9 @@ export async function getReportData(params: {
     const { products } = await getProducts({ categoryId, limit: 1000 })
     return products.map((p) => ({
       name: p.name,
-      nameKm: p.nameKm,
-      category: p.categoryName,
+      nameKm: p.nameKm || '',
+      category: p.categoryName || '',
+      categoryKm: p.categoryNameKm || '',
       unit: p.unit,
       altUnit: p.altUnit || '',
       conversionRate: p.conversionRate || 1,
@@ -38,6 +39,7 @@ export async function getReportData(params: {
     return movements.map((m) => ({
       date: m.createdAt.slice(0, 16).replace('T', ' '),
       product: m.productName,
+      productKm: m.productNameKm || '',
       type: m.type,
       quantity: m.enteredQuantity ?? m.quantity,
       unit: m.enteredUnit || m.productMainUnit || '',
@@ -77,6 +79,7 @@ export async function getReportData(params: {
       return {
         date: (p.purchaseDate || p.createdAt).slice(0, 10),
         product: prod?.name || 'Product',
+        productKm: prod?.nameKm || '',
         supplier: supMap.get(p.supplierId) || 'Supplier',
         supplierId: p.supplierId,
         quantity: packageQuantity,
@@ -164,7 +167,7 @@ export async function generateCsvReport(params: {
   }
 
   const isKm = params.language === 'km'
-  const keys = Object.keys(data[0]).filter((k) => k !== 'supplierId')
+  const keys = Object.keys(data[0]).filter((k) => !['supplierId', 'categoryKm', 'productKm', 'nameKm'].includes(k))
 
   // Localized column header translation map
   const HEADER_MAP: Record<string, { en: string; km: string }> = {
@@ -223,7 +226,17 @@ export async function generateCsvReport(params: {
     return escapeCell(mapped ? (isKm ? mapped.km : mapped.en) : k)
   })
 
-  const rows = data.map((row) => keys.map((k) => escapeCell(row[k])).join(','))
+  const rows = data.map((row) =>
+    keys.map((k) => {
+      let val = row[k]
+      if (isKm) {
+        if (k === 'name' && row.nameKm) val = row.nameKm
+        if (k === 'product' && row.productKm) val = row.productKm
+        if (k === 'category' && row.categoryKm) val = row.categoryKm
+      }
+      return escapeCell(val)
+    }).join(',')
+  )
 
   // UTF-8 BOM + Header + Rows
   return '\uFEFF' + [headers.join(','), ...rows].join('\n')
