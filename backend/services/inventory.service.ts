@@ -110,7 +110,7 @@ export async function recordStockIn(params: {
   const rawBase = units.unit || 'unit'
   const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
   const altUnit = units.altUnit || ''
-  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
+  const conversionRate = Number(units.conversionRate) > 1 ? Number(units.conversionRate) : 1
 
   let baseQuantity = params.quantity
   let unitDetail = `${params.quantity} ${baseUnit}`
@@ -277,7 +277,7 @@ export async function recordStockOut(params: {
   const rawBase = units.unit || 'unit'
   const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
   const altUnit = units.altUnit || ''
-  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
+  const conversionRate = Number(units.conversionRate) > 1 ? Number(units.conversionRate) : 1
 
   let baseQuantity = params.quantity
   let unitDetail = `${params.quantity} ${baseUnit}`
@@ -420,7 +420,7 @@ export async function recordReturn(params: {
   const rawBase = units.unit || 'unit'
   const baseUnit = rawBase.includes('/') ? rawBase.split('/')[0].trim() : rawBase
   const altUnit = units.altUnit || ''
-  const conversionRate = Number(productRow.conversionRate) > 1 ? Number(productRow.conversionRate) : 1
+  const conversionRate = Number(units.conversionRate) > 1 ? Number(units.conversionRate) : 1
   const quantity = altUnit && conversionRate > 1 && (!params.unit || params.unit.toLowerCase() === baseUnit.toLowerCase()) ? params.quantity * conversionRate : params.quantity
 
   // RACE WINDOW MITIGATION (Requirement 11):

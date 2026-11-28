@@ -77,7 +77,10 @@ export function InventoryLedgerView() {
           <button
             type="button"
             aria-pressed={categoryId === 'ALL'}
-            onClick={() => setCategoryId('ALL')}
+            onClick={() => {
+              setCategoryId('ALL')
+              setCurrentPage(1)
+            }}
             className={`min-w-0 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${categoryId === 'ALL' ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' : 'border-zinc-200 bg-white hover:border-amber-300 dark:border-zinc-800 dark:bg-[#121216] dark:hover:border-amber-700'}`}
           >
             <span className="block truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">{t('inventory.allProducts')}</span>
@@ -88,7 +91,10 @@ export function InventoryLedgerView() {
               key={category.id}
               type="button"
               aria-pressed={categoryId === category.id}
-              onClick={() => setCategoryId(category.id)}
+              onClick={() => {
+                setCategoryId(category.id)
+                setCurrentPage(1)
+              }}
               className={`min-w-0 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${categoryId === category.id ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' : 'border-zinc-200 bg-white hover:border-amber-300 dark:border-zinc-800 dark:bg-[#121216] dark:hover:border-amber-700'}`}
             >
               <span className="block truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">

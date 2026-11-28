@@ -215,7 +215,7 @@ export function StockInView() {
                   <span className="font-bold">{quantity} {getUnitText(baseUnit, t)}</span> × <span className="font-bold">{conversionRate} {getUnitText(altUnit, t)}</span> = <span className="font-extrabold text-emerald-950 underline">{baseQuantityAdded} {getUnitText(altUnit, t)}</span>
                 </p>
                 <p className="text-[16.5px] text-emerald-700">
-                  {t('stockIn.conversionStockNote', { qty: baseQuantityAdded, unit: getUnitText(baseUnit, t) })}
+                  {t('stockIn.conversionStockNote', { qty: baseQuantityAdded, unit: getUnitText(altUnit, t) })}
                 </p>
               </div>
             )}

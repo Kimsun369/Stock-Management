@@ -5,9 +5,21 @@ type UnitPair = {
   nameKm?: string
 }
 
-const MAIN_UNITS = new Set(['case', 'box', 'carton', 'pack', 'package', 'កេស', 'កញ្ចប់'])
 const MINOR_UNITS = new Set(['can', 'bottle', 'piece', 'sheet', 'unit', 'កំប៉ុង', 'ដប', 'ដុំ', 'សន្លឹក'])
-const PIECE_PACK_PRODUCTS = new Set(['ក្រដាសជូតមាត់', 'កន្សែងត្រជាក់', 'ឈូករត', 'សសៃត្រី'])
+
+/** Packaging hierarchy rank (higher = outer container, lower = inner/counted unit). */
+const UNIT_RANK: Record<string, number> = {
+  case: 3,
+  pack: 1,
+  piece: 2,
+  can: 0,
+  bottle: 0,
+  sheet: 0,
+  unit: 0,
+  kg: 0,
+  g: 0,
+  liter: 0,
+}
 
 /** Canonicalize Khmer or alias unit strings to their English canonical form. */
 function canonicalUnit(u: string): string {
@@ -23,35 +35,33 @@ function canonicalUnit(u: string): string {
 }
 
 /** Reads both current main/minor records and legacy records saved in the reverse order.
- *  Always returns canonical English unit strings so downstream code can compare safely. */
+ *  Always returns canonical English unit strings (outer packaging as `unit`, inner unit as `altUnit`). */
 export function normalizeUnitPair<T extends UnitPair>(product: T, categoryLabel = ''): T {
-  const unit = (product.unit || '').trim().toLowerCase()
-  const altUnit = (product.altUnit || '').trim().toLowerCase()
+  const rawUnit = canonicalUnit(product.unit || '')
+  const rawAltUnit = product.altUnit ? canonicalUnit(product.altUnit) : ''
   const rate = Number(product.conversionRate) || 1
 
-  // These products are counted internally as packs, with each outer piece
-  // containing the configured number of packs. Keep the outer piece first.
-  const nameKm = (product.nameKm || '').trim()
-  if (rate > 1 && PIECE_PACK_PRODUCTS.has(nameKm)) {
-    return { ...product, unit: 'piece', altUnit: 'pack' }
-  }
-
-  // Swap if stored in reverse order (minor first, major as altUnit)
-  if (rate > 1 && MINOR_UNITS.has(unit) && MAIN_UNITS.has(altUnit)) {
-    return { ...product, unit: canonicalUnit(product.altUnit || ''), altUnit: canonicalUnit(product.unit || '') }
+  // Ensure outer packaging unit is always `unit` and inner counted unit is `altUnit`
+  if (rate > 1 && rawUnit && rawAltUnit) {
+    const unitRank = UNIT_RANK[rawUnit] ?? 0
+    const altRank = UNIT_RANK[rawAltUnit] ?? 0
+    if (altRank > unitRank) {
+      return { ...product, unit: rawAltUnit, altUnit: rawUnit }
+    }
+    if (rawUnit !== (product.unit || '') || rawAltUnit !== (product.altUnit || '')) {
+      return { ...product, unit: rawUnit, altUnit: rawAltUnit }
+    }
+    return product
   }
 
   const context = `${categoryLabel} ${(product as any).name || ''} ${(product as any).nameKm || ''}`.toLowerCase()
   const isBeerOrWater = /beer|cider|water|ស្រាបៀរ|ស៊ីដឺ|ទឹក/.test(context)
-  if (isBeerOrWater && rate <= 1 && !altUnit && MINOR_UNITS.has(unit) && ['can', 'bottle', 'កំប៉ុង', 'ដប'].includes(unit)) {
-    return { ...product, unit: 'case', altUnit: canonicalUnit(product.unit || ''), conversionRate: 24 }
+  if (isBeerOrWater && rate <= 1 && !rawAltUnit && MINOR_UNITS.has(rawUnit) && ['can', 'bottle'].includes(rawUnit)) {
+    return { ...product, unit: 'case', altUnit: rawUnit, conversionRate: 24 }
   }
 
-  // Canonicalize any Khmer or alias strings even when no swap is needed
-  const cUnit = canonicalUnit(unit || product.unit || '')
-  const cAlt = altUnit ? canonicalUnit(altUnit || product.altUnit || '') : (product.altUnit || '')
-  if (cUnit !== (product.unit || '') || cAlt !== (product.altUnit || '')) {
-    return { ...product, unit: cUnit, altUnit: cAlt }
+  if (rawUnit !== (product.unit || '') || rawAltUnit !== (product.altUnit || '')) {
+    return { ...product, unit: rawUnit, altUnit: rawAltUnit }
   }
 
   return product
