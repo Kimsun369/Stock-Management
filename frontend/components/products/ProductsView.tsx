@@ -36,8 +36,8 @@ function getEditableMainUnit(unit: string): string {
 function getEditablePackagingUnit(unit: string): string {
   const value = unit.trim().toLowerCase()
   if (['piece', 'ដុំ'].includes(value)) return 'piece'
-  if (['case', 'carton', 'box', 'កេស'].includes(value)) return 'កេស'
-  if (['pack', 'package', 'កញ្ចប់'].includes(value)) return 'កញ្ចប់'
+  if (['case', 'carton', 'box', 'កេស'].includes(value)) return 'case'
+  if (['pack', 'package', 'កញ្ចប់'].includes(value)) return 'pack'
   return ''
 }
 
@@ -207,8 +207,8 @@ export function ProductsView({ userRole = 'STAFF' }: { userRole?: 'ADMIN' | 'STA
   const altUnitOptions = [
     { value: '', label: t('products.noAltUnit') },
     { value: 'piece', label: t('products.units.piece') },
-    { value: 'កេស', label: t('products.units.carton') },
-    { value: 'កញ្ចប់', label: t('products.units.pack') },
+    { value: 'case', label: t('products.units.case') },
+    { value: 'pack', label: t('products.units.pack') },
   ]
 
   const rawProducts: ProductWithDetails[] = data?.products || []

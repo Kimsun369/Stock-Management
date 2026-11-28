@@ -274,7 +274,7 @@ export function StockInView() {
               <button type="button" onClick={() => setDetailItem(item)} key={item.id} className="w-full text-left p-3 bg-gray-50 dark:bg-zinc-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg text-xs space-y-1 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                 <div className="flex justify-between font-semibold text-zinc-800 dark:text-zinc-200">
                   <span className="truncate pr-2">{language === 'km' && item.productNameKm ? item.productNameKm : item.productName}</span>
-                  <span className="text-emerald-600 font-bold">+{formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>
+                  <span className="text-emerald-600 font-bold">+{item.enteredQuantity && item.enteredUnit ? `${item.enteredQuantity} ${formatUnitLabel(item.enteredUnit, t)}` : formatStockQuantity(item.quantity, item.productMainUnit, item.productMinorUnit, item.productConversionRate, t)}</span>
                 </div>
                 <div className="flex justify-between text-zinc-500 dark:text-zinc-400 text-[15px]">
                   <span className="truncate max-w-[140px]">{item.notes || item.reference || item.reason}</span>
